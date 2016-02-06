@@ -1,6 +1,23 @@
-#initial_profiler.py
+#
+# SEU detection and correction
+# Copyright (C) 2015 Nano Avionics
+#
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
 
-linkScriptTemplate = 'template_script.ld'
+linkScriptTemplate = 'initial_seu_link.ld'
 generatedLinkerScript = 'gen/secondary_seu_link.ld'
 elfInput = 'gen/readElf.data'
 
@@ -32,7 +49,7 @@ with open('gen/addressDump.data', 'r') as addressFile:
 # Write linkerscript to file
 with open(linkScriptTemplate, 'r') as templateFile:
         headerTemplateData = [next(templateFile) for n in range(34)] #fixed file lengths
-        tailTemplateData = [next(templateFile) for n in range(106)]
+        tailTemplateData = [next(templateFile) for n in range(59)]
         with open(generatedLinkerScript, 'w') as outputFile:
             x = 0
             for element in headerTemplateData: #write first half of linker script
