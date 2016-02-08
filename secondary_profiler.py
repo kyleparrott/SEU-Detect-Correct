@@ -75,9 +75,8 @@ with open('gen/textHexDump.hex', 'r') as hexFile:
 with open('gen/addressDump.data', 'r') as addressFile:
     for line in addressFile:
         addressData = line.split()
-        if int(addressData[1], 16) != 0:
+        if int(addressData[1], 16) != 0 and 'handler' not in addressData[2].lower(): #if the size of the function is not zero and its name does not include handler
             sectionDataArray.append(SectionDataObj(addressData[2], addressData[0], addressData[1]))
-
 
 #Loop through each function and rebuild it's contents from the hexdump
 #then calculate the crc from the crc util and store that crc into the function metadata.
@@ -98,13 +97,10 @@ for elem in sectionDataArray:
                         tempList = []
             else:
                 hexContents = '0'
-    process = subprocess.Popen(['./crcGenerator', finalContents], stdout=subprocess.PIPE)
-    out, err = process.communicate()
-    crc = out
-    elem.crc =  str(crc)[2:-3] #Need to fix to less-hacky solution
+    out = subprocess.check_output(['./crcGenerator', finalContents])
+    elem.crc = int(out)
     elem.contents = finalContents
     finalContents = ''
-
 
 with open(cfileName, 'w') as cFile:
     cFile.write(cIncludes)
@@ -114,4 +110,4 @@ with open(cfileName, 'w') as cFile:
         cFile.write(cEntry % (entry.name, entry.name, entry.crc, entry.size))
         x += 1
 
-print ('\nsuccessfully generated c symbol file %s with Final values\n' % cfileName)
+print ('successfully generated c symbol file %s with Final values' % cfileName)

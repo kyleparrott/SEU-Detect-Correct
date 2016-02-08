@@ -43,7 +43,7 @@ CFLAGS += -finstrument-functions
 SECONDARY_CFLAGS=$(BASE_FLAGS)
 SECONDARY_CFLAGS += -Tgen/secondary_seu_link.ld
 
-TRACEFLAGS=$(BASE_FLAGS)
+TRACEFLAGS=$(BASE_FLAGS) #doesn't include -finstrument-functions
 
 vpath %.c src
 vpath %.a lib

@@ -27,8 +27,8 @@ cIntro = '#include <stdint.h>\n#include "block_header.h"\n\n'
 cEntry = 'blockHeader BlockHeader%s __attribute__((section (".header.%s"))) = {%iu, %i};\n'
 cSectionName = '.header.%s'
 
-entryFormat = '    *(.text.%s)\n'
-headerEntryFormat = '    *(%s)\n'
+entryFormat = '        *(.text.%s)\n'
+headerEntryFormat = '        *(%s)\n'
 
 
 class SectionDataObj:
@@ -43,13 +43,13 @@ sectionDataArray = []
 with open('gen/addressDump.data', 'r') as addressFile:
     for line in addressFile:
         addressData = line.split()
-        if int(addressData[1], 16) != 0:
+        if int(addressData[1], 16) != 0 and 'handler' not in addressData[2].lower(): #if the size of the function is not zero and its name does not include handler
             sectionDataArray.append(SectionDataObj(addressData[2], addressData[0], addressData[1]))
 
 # Write linkerscript to file
 with open(linkScriptTemplate, 'r') as templateFile:
-        headerTemplateData = [next(templateFile) for n in range(34)] #fixed file lengths
-        tailTemplateData = [next(templateFile) for n in range(59)]
+        headerTemplateData = [next(templateFile) for n in range(33)] #fixed file lengths
+        tailTemplateData = [next(templateFile) for n in range(60)]
         with open(generatedLinkerScript, 'w') as outputFile:
             x = 0
             for element in headerTemplateData: #write first half of linker script
