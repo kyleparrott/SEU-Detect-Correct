@@ -1,0 +1,6 @@
+#ignore compiled object files, libraries and executables
+*.a
+*.elf
+*.o
+*.so
+crcGenerator
