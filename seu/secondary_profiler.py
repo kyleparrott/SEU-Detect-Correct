@@ -16,11 +16,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-
+import os
 import re
 import subprocess
 
-cfileName = 'seu/gen/secondary_seu_headers.c'
+thisDir = os.path.dirname(os.path.abspath(__file__))
+genDir = os.path.join(thisDir, 'gen')
+crcGenerator = os.path.join(os.path.dirname(thisDir), 'build', 'crcGenerator')
+
+cfileName = os.path.join(genDir, 'secondary_seu_headers.c')
 cIncludes = '#include "block_header.h"\n\n'
 
 cEntry = 'blockHeader header%s __attribute__((section (".header.%s"))) = {%su, %i};\n'
@@ -48,13 +52,13 @@ nameArray = [] #Prevent two functions with the same section name from being adde
 
 #Read in the starting address from the hexDump
 startAddress = 0
-with open('seu/gen/startAddr.data') as startAddrFile:
+with open(os.path.join(genDir, 'startAddr.data')) as startAddrFile:
     for line in startAddrFile:
         startAddress = int(line, 16)
 
 #Read the hex dump into an array that indexes each address against it's hex value
 x = 1
-with open('seu/gen/textHexDump.hex', 'r') as hexFile:
+with open(os.path.join(genDir, 'textHexDump.hex'), 'r') as hexFile:
     for line in hexFile:
         if x < 3:
             indexAddress = startAddress
@@ -72,7 +76,7 @@ with open('seu/gen/textHexDump.hex', 'r') as hexFile:
 regex = re.compile('[^a-zA-Z0-9_]')
 
 #Get the starting address, length and name of each function and stor it into the sectionDataArray.
-with open('seu/gen/addressDump.data', 'r') as addressFile:
+with open(os.path.join(genDir, 'addressDump.data'), 'r') as addressFile:
     for line in addressFile:
         addressData = line.split()
 
@@ -100,7 +104,7 @@ for elem in sectionDataArray:
                         tempList = []
             else:
                 hexContents = '0'
-    out = subprocess.check_output(['./crcGenerator', finalContents])
+    out = subprocess.check_output([crcGenerator, finalContents])
     elem.crc = int(out)
     elem.contents = finalContents
     finalContents = ''

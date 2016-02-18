@@ -35,3 +35,6 @@
 
 # Compile Folders
 bin/
+build/
+binary/
+seu/gen/
