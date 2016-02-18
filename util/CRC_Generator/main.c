@@ -43,6 +43,7 @@ int main(int argc, char** argv) {
     }
     uint32_t res = CRC_CalcBlockCRC(inputArray, numWords);
     printf("%02u\n", res);
+    return 0;
 }
 
 static uint32_t CRC_CalcBlockCRC(uint32_t *buffer, uint32_t words) {

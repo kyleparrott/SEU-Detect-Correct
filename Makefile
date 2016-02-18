@@ -1,6 +1,6 @@
 TARGET:=FreeRTOS
-TOOLCHAIN_ROOT = ~/stm/gcc-arm-none-eabi-4_9-2015q3
-TOOLCHAIN_PATH:=$(TOOLCHAIN_ROOT)/bin
+# old root for reference TOOLCHAIN_ROOT ?= ~/stm/gcc-arm-none-eabi-4_9-2015q3
+TOOLCHAIN_ROOT ?= /usr/lib
 TOOLCHAIN_PREFIX:=arm-none-eabi
 
 OPTLVL:=0
@@ -57,7 +57,7 @@ SRC+=stm32f4xx_tim.c
 SRC+=stm32f4xx_usart.c
 SRC+=stm32f4xx_rng.c
 
-CRC_SRCS = CRC_SRCS = util/CRC_Generator/crcmodel.c util/CRC_Generator/main.c
+CRC_SRCS = util/CRC_Generator/crcmodel.c util/CRC_Generator/main.c
 
 CDEFS=-DUSE_STDPERIPH_DRIVER
 CDEFS+=-DSTM32F4XX
@@ -90,17 +90,19 @@ GDB=$(TOOLCHAIN_PREFIX)-gdb
 GCC=gcc #Standard Desktop GCC
 
 READELF = arm-none-eabi-readelf
-PYTHON = python
+PYTHON = python3
 
 OBJ = $(SRC:%.c=$(BUILD_DIR)/%.o)
 
-all: FINAL_COMPILATION 
+all: utils FINAL_COMPILATION
 
 utils:
-	@$(GCC) $(CRC_SRCS) -o crcGenerator
+	@test -d $(BUILD_DIR) || mkdir -p $(BUILD_DIR)
+	@$(GCC) $(CRC_SRCS) -o $(BUILD_DIR)/crcGenerator
 
 $(BUILD_DIR)/%.o: %.c
 	@echo [CC] $(notdir $<)
+	@test -d $(BUILD_DIR) || mkdir -p $(BUILD_DIR)
 	@$(CC) $(CFLAGS) $(SEUFLAG) $< -c -o $@
 
 UNCHECKED_OBJS: $(OBJ)
@@ -111,10 +113,12 @@ INITIAL_COMPILATION: UNCHECKED_OBJS
 	@echo "[AS] $(ASRC)"
 	@$(AS) -o $(ASRC:%.s=$(BUILD_DIR)/%.o) $(STARTUP)/$(ASRC)
 	@echo [LD] $(TARGET).elf
+	@test -d $(BIN_DIR) || mkdir -p $(BIN_DIR)
 	@$(CC) -o $(BIN_DIR)/initial$(TARGET).elf $(INITIAL_LINKERSCRIPT) $(LDFLAGS) $(OBJ) $(TRACE_OBJ) $(ASRC:%.s=$(BUILD_DIR)/%.o) $(LDLIBS)
 
 INITIAL_PROFILER: INITIAL_COMPILATION
 	@echo "Starting Initial Profiler"
+	@test -d seu/gen || mkdir -p seu/gen
 	@$(READELF) -s --wide $(BIN_DIR)/initial$(TARGET).elf | grep "FUNC" | awk '{print $$2 " " $$3 " " $$8}' > seu/gen/addressDump.data
 	@$(PYTHON) seu/initial_profiler.py
 	@$(CC) $(CFLAGS) -c $(HEADER_SRC) -o $(HEADER_OBJ)
