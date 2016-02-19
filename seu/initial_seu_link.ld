@@ -20,11 +20,23 @@ MEMORY
 {
     sram (W!RX) : ORIGIN = 0x20000000, LENGTH = 192K
     CCMRAM (xrw) : ORIGIN = 0x60000000, LENGTH = 0K
-    flash (xr) : ORIGIN = 0x08000000, LENGTH = 1024K
+    flash00 : ORIGIN = 0x08000000, LENGTH = 16K
+    flash01 : ORIGIN = 0x08004000, LENGTH = 16K
+    flash02 : ORIGIN = 0x08008000, LENGTH = 16K
+    flash03 : ORIGIN = 0x0800C000, LENGTH = 16K
+    flash04 : ORIGIN = 0x08010000, LENGTH = 64K
+    flash05 : ORIGIN = 0x08020000, LENGTH = 128K
+    flash06 : ORIGIN = 0x08040000, LENGTH = 128K
+    flash07 : ORIGIN = 0x08060000, LENGTH = 128K
+    flash08 : ORIGIN = 0x08080000, LENGTH = 128K
+    flash09 : ORIGIN = 0x080A0000, LENGTH = 128K
+    flash10 : ORIGIN = 0x080C0000, LENGTH = 128K
+    flash11 : ORIGIN = 0x080E0000, LENGTH = 128K
 }
 
 SECTIONS
 {
+
     .text :
     {
         . = ALIGN(4);
@@ -44,10 +56,10 @@ SECTIONS
         _etext = .;
 		_sidata = _etext;
         PROVIDE(etext = .);
-     		_fini = . ;
-				*(.fini)
+ 	  	   _fini = . ;
+		   *(.fini)
 
-    } >flash
+    } >flash11
 
     .data :
     {
