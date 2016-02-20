@@ -29,20 +29,56 @@ cIntro = '#include <stdint.h>\n#include "block_header.h"\n\n'
 cEntry = 'blockHeader BlockHeader%s __attribute__((section (".header.%s"))) = {%iu, %i};\n'
 cSectionName = '.header.%s'
 
-entryFormat = '        *(.text.%s)\n'
-headerEntryFormat = '        *(%s)\n'
+sectionFormat = '''
+    .text%s : 
+    {
+        . = ALIGN(4);
+%s    
+    } >flash%02i'''
 
+
+functionEntryFormat = '        *(.text.%s)\n'
+headerEntryFormat = '        *(.header.%s)\n'
+
+SIXTEEN_K = 16 * 1024
+SIXTY_FOUR_K = 64 * 1024
+ONE_TWENTY_EIGHT_K = 128 * 1024
+
+HEADERSIZE = 12 #bits
+WORDSIZE = 32 #bits
+
+
+class LSSection: 
+    def __init__(self, name, number, length):
+        self.name = name
+        self.number = number
+        self.length = length
 
 class SectionDataObj:
-    def __init__(self, name, address, size):
+    def __init__(self, name, address, length):
         self.name = name
         self.address = int(address,16)
-        self.size = int(size)
+        self.length = int(length)
         self.crc = 0  # placeholder
 
 sectionDataArray = []
 nameArray = [] #Prevent two functions with the same section name from being added twice. Will come up with better solution later
 regex = re.compile('[^a-zA-Z0-9_]')
+
+LinkScriptSectionArray = []
+
+LinkScriptSectionArray.append( LSSection('.text0', 1, SIXTEEN_K))
+LinkScriptSectionArray.append( LSSection('.text1', 2, SIXTEEN_K))
+LinkScriptSectionArray.append( LSSection('.text2', 3, SIXTEEN_K))
+LinkScriptSectionArray.append( LSSection('.text3', 4, SIXTEEN_K))
+LinkScriptSectionArray.append( LSSection('.text4', 5, SIXTY_FOUR_K))
+LinkScriptSectionArray.append( LSSection('.text5', 6, ONE_TWENTY_EIGHT_K))
+LinkScriptSectionArray.append( LSSection('.text6', 7, ONE_TWENTY_EIGHT_K))
+LinkScriptSectionArray.append( LSSection('.text7', 8, ONE_TWENTY_EIGHT_K))
+LinkScriptSectionArray.append( LSSection('.text8', 9, ONE_TWENTY_EIGHT_K))
+LinkScriptSectionArray.append( LSSection('.text9', 10, ONE_TWENTY_EIGHT_K))
+LinkScriptSectionArray.append( LSSection('.text10', 11, ONE_TWENTY_EIGHT_K))
+LinkScriptSectionArray.append( LSSection('.text11', 12, ONE_TWENTY_EIGHT_K))
 
 with open('seu/gen/addressDump.data', 'r') as addressFile:
     for line in addressFile:
@@ -53,27 +89,40 @@ with open('seu/gen/addressDump.data', 'r') as addressFile:
 
 # Write linkerscript to file
 with open(linkScriptTemplate, 'r') as templateFile:
-        headerTemplateData = [next(templateFile) for n in range(33)] #fixed file lengths
-        tailTemplateData = [next(templateFile) for n in range(61)]
+        headerTemplateData = [next(templateFile) for n in range(38)] #fixed file lengths
+        tailTemplateData = [next(templateFile) for n in range(68)]
         with open(generatedLinkerScript, 'w') as outputFile:
             x = 0
             for element in headerTemplateData: #write first half of linker script
                 outputFile.write('%s' % element)
 
+            runningSize = 0 #Running total of size of functions placed in current section
+            index = 0 # Current linker script section
+            sectionString = '' # contents of the current LS section
             for entry in sectionDataArray:        #write individual sections to linker script
-                name = cSectionName % entry.name
-                outputFile.write(headerEntryFormat % (name))
-                outputFile.write(entryFormat % entry.name)
-                x = x + 1
+                if runningSize + entry.length < LinkScriptSectionArray[x].length:
+                    sectionString += functionEntryFormat % entry.name
+                    sectionString += headerEntryFormat % entry.name
+                    runningSize += entry.length
+                    runningSize += HEADERSIZE # Account for word aligned header size 
+                    runningSize += entry.length % WORDSIZE #Try to compensate for alignment
+
+                else: 
+                    outputFile.write(sectionFormat % (LinkScriptSectionArray[x].number, sectionString, LinkScriptSectionArray[x].number))
+                    x+=1
+                    runningSize = 0
+            outputFile.write(sectionFormat % (LinkScriptSectionArray[x].number, sectionString, LinkScriptSectionArray[x].number)) # Write final section to file 
+
             for element in tailTemplateData:    #write second half of linkerscript
                 outputFile.write('%s' % element)
+
 
 with open(cfileName, 'w') as cFile:
     cFile.write(cIntro)
     x = 0
     for entry in sectionDataArray:
         name = cSectionName % str(x)
-        cFile.write(cEntry % (entry.name, entry.name, int(entry.crc), entry.size))
+        cFile.write(cEntry % (entry.name, entry.name, int(entry.crc), entry.length))
         x += 1
 
 print ('successfully generated c symbol file %s with placeholder values' % cfileName)
