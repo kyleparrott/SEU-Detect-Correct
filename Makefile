@@ -94,7 +94,7 @@ PYTHON = python3
 
 OBJ = $(SRC:%.c=$(BUILD_DIR)/%.o)
 
-all: utils FINAL_COMPILATION
+all: utils SECONDARY_COMPILATION
 
 utils:
 	@test -d $(BUILD_DIR) || mkdir -p $(BUILD_DIR)
@@ -126,22 +126,8 @@ INITIAL_PROFILER: INITIAL_COMPILATION
 
 SECONDARY_COMPILATION: INITIAL_PROFILER
 	@echo "Starting Secondary Complilation"
-	@$(CC) -o $(BIN_DIR)/secondary$(TARGET).elf $(SECONDARY_LINKERSCRIPT) $(LDFLAGS) $(OBJ) $(TRACE_OBJ) $(HEADER_OBJ) $(ASRC:%.s=$(BUILD_DIR)/%.o) $(LDLIBS)
+	@$(CC) -o $(BIN_DIR)/final$(TARGET).elf $(SECONDARY_LINKERSCRIPT) $(LDFLAGS) $(OBJ) $(TRACE_OBJ) $(HEADER_OBJ) $(ASRC:%.s=$(BUILD_DIR)/%.o) $(LDLIBS)
 	@echo "Secondary Complilation Completed"
-
-SECONDARY_PROFILER: SECONDARY_COMPILATION
-	@echo "Starting Secondary Profiler"
-	@rm $(HEADER_OBJ)
-	@$(READELF) -x .text $(BIN_DIR)/secondary$(TARGET).elf | sed '3q;d' | awk '{print $$1}' > seu/gen/startAddr.data
-	@$(READELF) -x .text $(BIN_DIR)/secondary$(TARGET).elf | awk '{print $$2 $$3 $$4 $$5}' > seu/gen/textHexDump.hex
-	@$(READELF) -s $(BIN_DIR)/secondary$(TARGET).elf | grep "FUNC" | awk '{print $$2 " " $$3 " " $$8}' > seu/gen/addressDump.data
-	@$(PYTHON) seu/secondary_profiler.py
-	@$(CC) $(CFLAGS) -c $(HEADER_SRC) -o $(HEADER_OBJ)
-	@echo "Secondary Profiler Complete"
-
-FINAL_COMPILATION: SECONDARY_PROFILER
-	@$(CC) -o $(BIN_DIR)/final$(TARGET).elf $(SECONDARY_LINKERSCRIPT) $(LDFLAGS)  $(OBJ) $(TRACE_OBJ) $(HEADER_OBJ) $(ASRC:%.s=$(BUILD_DIR)/%.o) $(LDLIBS)
-	@echo "\nfinal link complete: binary/final$(TARGET).elf"
 
 .PHONY: clean
 
