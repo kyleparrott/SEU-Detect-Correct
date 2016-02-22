@@ -37,8 +37,8 @@ MEMORY
     flash14 : ORIGIN = 0x080B0000, LENGTH = 64K
     flash15 : ORIGIN = 0x080C0000, LENGTH = 64K
     flash16 : ORIGIN = 0x080D0000, LENGTH = 64K
-    flash17 : ORIGIN = 0x080E0000, LENGTH = 64K
-    flash18 : ORIGIN = 0x080F0000, LENGTH = 64K
+    flash17 : ORIGIN = 0x080E0000, LENGTH = 128K
+    /*   flash18 : ORIGIN = 0x080F0000, LENGTH = 64K */
 }
 
 SECTIONS
@@ -66,7 +66,7 @@ SECTIONS
  	  	   _fini = . ;
 		   *(.fini)
 
-    } >flash11
+    } >flash17
 
     .data :
     {
