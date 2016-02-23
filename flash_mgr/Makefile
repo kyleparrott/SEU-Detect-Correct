@@ -8,7 +8,7 @@ CFLAGS=-g -O2 -I. -Wall
 
 all: flash_mgr.elf
 
-rstest.elf: flash_mgr.o
+flash_mgr.elf: flash_mgr.o
 	gcc $(CFLAGS) -o $@ $^
 
 flash_mgr.o: flash_mgr.h

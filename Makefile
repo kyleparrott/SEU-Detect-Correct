@@ -1,7 +1,11 @@
 TARGET:=FreeRTOS
 # old root for reference TOOLCHAIN_ROOT ?= ~/stm/gcc-arm-none-eabi-4_9-2015q3
-TOOLCHAIN_ROOT ?= /usr/lib
-TOOLCHAIN_PREFIX:=arm-none-eabi
+ifeq (,$(TOOLCHAIN_ROOT))
+TOOLCHAIN_ROOT := /usr/lib
+endif
+TOOLCHAIN_ROOT := $(abspath $(TOOLCHAIN_ROOT))
+TOOLCHAIN_BIN := $(TOOLCHAIN_ROOT)/bin
+TOOLCHAIN_PREFIX := arm-none-eabi
 
 OPTLVL:=0
 DBG:=-g
@@ -21,7 +25,8 @@ INCLUDE+=-Iseu/src
 BUILD_DIR = $(CURDIR)/build
 BIN_DIR = $(CURDIR)/binary
 SEU_DIR = seu/
-SEU_SRC_DIR = seu/src
+SEU_SRC_DIR = $(SEU_DIR)/src
+SEU_GEN_DIR = $(SEU_DIR)/gen
 
 ASRC=startup_stm32f4xx.s
 
@@ -75,21 +80,22 @@ SEUFLAG=-finstrument-functions
 
 INITIAL_LINKERSCRIPT=-Tseu/initial_seu_link.ld
 SECONDARY_LINKERSCRIPT=-Tseu/gen/secondary_seu_link.ld
-HEADER_SRC=seu/gen/secondary_seu_headers.c 
+HEADER_SRC=seu/gen/secondary_seu_headers.c
 HEADER_OBJ=build/secondary_seu_headers.o
 TRACE_FILE = seu/src/trace_functions.c
 TRACE_OBJ = build/trace_functions.o
 
-CC=$(TOOLCHAIN_PREFIX)-gcc
-LD=$(TOOLCHAIN_PREFIX)-gcc
-OBJCOPY=$(TOOLCHAIN_PREFIX)-objcopy
-AS=$(TOOLCHAIN_PREFIX)-as
-AR=$(TOOLCHAIN_PREFIX)-ar
-GDB=$(TOOLCHAIN_PREFIX)-gdb
+# don't count on having the tools in the PATH...
+CC := $(TOOLCHAIN_BIN)/$(TOOLCHAIN_PREFIX)-gcc
+LD := $(TOOLCHAIN_BIN)/$(TOOLCHAIN_PREFIX)-gcc
+OBJCOPY := $(TOOLCHAIN_BIN)/$(TOOLCHAIN_PREFIX)-objcopy
+AS := $(TOOLCHAIN_BIN)/$(TOOLCHAIN_PREFIX)-as
+AR := $(TOOLCHAIN_BIN)/$(TOOLCHAIN_PREFIX)-ar
+GDB := $(TOOLCHAIN_BIN)/$(TOOLCHAIN_PREFIX)-gdb
+READELF := $(TOOLCHAIN_BIN)/$(TOOLCHAIN_PREFIX)-readelf
 
 GCC=gcc #Standard Desktop GCC
 
-READELF = arm-none-eabi-readelf
 PYTHON = python3
 
 OBJ = $(SRC:%.c=$(BUILD_DIR)/%.o)
@@ -132,11 +138,9 @@ SECONDARY_COMPILATION: INITIAL_PROFILER
 .PHONY: clean
 
 clean:
-	@echo [RM] OBJ
-	@rm -f $(OBJ)
-	@rm -f build/*.o
-	@rm -f binary/*.elf
-	@rm -f seu/gen/*
-	@rm -f $(ASRC:%.s=$(BUILD_DIR)/%.o)
-	@echo [RM] BIN
-	@rm -f $(BIN_DIR)/$(TARGET).elf
+	@echo [RM] BUILD DIR
+	@rm -f $(BUILD_DIR)/*
+	@echo [RM] GEN DIR
+	@rm -f $(SEU_GEN_DIR)/*
+	@echo [RM] BIN DIR
+	@rm -f $(BIN_DIR)/*
