@@ -19,7 +19,7 @@
   *
   * <h2><center>&copy; COPYRIGHT 2011 STMicroelectronics</center></h2>
   ******************************************************************************
-  */ 
+  */
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx_it.h"
@@ -52,14 +52,14 @@ void prvGetRegistersFromStack(uint32_t *pulFaultStackAddress) {
 away as the variables never actually get used. If the debugger won't show the
 values of the variables, make them global my moving their declaration outside
 of this function. */
-  volatile uint32_t r0;
-  volatile uint32_t r1;
-  volatile uint32_t r2;
-  volatile uint32_t r3;
-  volatile uint32_t r12;
-  volatile uint32_t lr; /* Link register. */
-  volatile uint32_t pc; /* Program counter. */
-  volatile uint32_t psr;/* Program status register. */
+  volatile uint32_t __attribute__((unused)) r0;
+  volatile uint32_t __attribute__((unused)) r1;
+  volatile uint32_t __attribute__((unused)) r2;
+  volatile uint32_t __attribute__((unused)) r3;
+  volatile uint32_t __attribute__((unused)) r12;
+  volatile uint32_t __attribute__((unused)) lr; /* Link register. */
+  volatile uint32_t __attribute__((unused)) pc; /* Program counter. */
+  volatile uint32_t __attribute__((unused)) psr;/* Program status register. */
 
   r0 = pulFaultStackAddress[0];
   r1 = pulFaultStackAddress[1];
@@ -77,7 +77,7 @@ of this function. */
 
 /* The fault handler implementation calls a function called
    prvGetRegistersFromStack(). */
-static void HardFault_Handler(void) {
+/* static void HardFault_Handler(void) {
   __asm volatile (
      " tst lr, #4                                                \n"
      " ite eq                                                    \n"
@@ -88,7 +88,7 @@ static void HardFault_Handler(void) {
      " bx r2                                                     \n"
      " handler2_address_const: .word prvGetRegistersFromStack    \n"
      );
-}
+} */
 
 /**
   * @brief  This function handles Memory Manage exception.

@@ -1,6 +1,6 @@
 /**
   ******************************************************************************
-  * @file    stm32f4xx_it.h 
+  * @file    stm32f4xx_it.h
   * @author  MCD Application Team
   * @version V1.0.0
   * @date    19-September-2011
@@ -17,7 +17,7 @@
   *
   * <h2><center>&copy; COPYRIGHT 2011 STMicroelectronics</center></h2>
   ******************************************************************************
-  */ 
+  */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef __STM32F4xx_IT_H
@@ -25,7 +25,7 @@
 
 #ifdef __cplusplus
  extern "C" {
-#endif 
+#endif
 
 /* Includes ------------------------------------------------------------------*/
 /* Exported types ------------------------------------------------------------*/
@@ -36,7 +36,7 @@
 void NMI_Handler(void);
 /* The prototype shows it is a naked function - in effect this is just an
     assembly function. */
-static void HardFault_Handler( void ) __attribute__( ( naked ) );
+/* static void HardFault_Handler( void ) __attribute__( ( naked ) ); */
 /* void HardFault_Handler(void); */
 void MemManage_Handler(void);
 void BusFault_Handler(void);

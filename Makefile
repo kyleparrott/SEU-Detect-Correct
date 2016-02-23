@@ -75,7 +75,7 @@ SEUFLAG=-finstrument-functions
 
 INITIAL_LINKERSCRIPT=-Tseu/initial_seu_link.ld
 SECONDARY_LINKERSCRIPT=-Tseu/gen/secondary_seu_link.ld
-HEADER_SRC=seu/gen/secondary_seu_headers.c 
+HEADER_SRC=seu/gen/secondary_seu_headers.c
 HEADER_OBJ=build/secondary_seu_headers.o
 TRACE_FILE = seu/src/trace_functions.c
 TRACE_OBJ = build/trace_functions.o
@@ -135,8 +135,6 @@ clean:
 	@echo [RM] OBJ
 	@rm -f $(OBJ)
 	@rm -f build/*.o
-	@rm -f binary/*.elf
 	@rm -f seu/gen/*
-	@rm -f $(ASRC:%.s=$(BUILD_DIR)/%.o)
 	@echo [RM] BIN
-	@rm -f $(BIN_DIR)/$(TARGET).elf
+	@rm -f $(BIN_DIR)/*.elf

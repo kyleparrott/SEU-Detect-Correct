@@ -14,10 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
 #include <stdint.h>
+
+/* NOTE: blockCRC MUST be the first member of this struct! */
 
 typedef struct {
     uint32_t blockCRC;
-    uint16_t length;
-} blockHeader;
+    uint32_t block_length;
+	uint16_t reed_solomon_parity[32];
+} block_header_t;

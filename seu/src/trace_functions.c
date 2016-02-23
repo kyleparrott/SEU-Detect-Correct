@@ -14,49 +14,187 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
-// #include "stm32f4_discovery.h"
-#include "stm32f4xx_conf.h"
-#include "block_header.h"
-#include "stm32f4xx_crc.h"
-#include "stm32f4xx_rcc.h"
 
-GPIO_InitTypeDef  GPIO_InitStructure;
-void Delay(__IO uint32_t nCount);
+#include <stm32f4xx.h>
+#include "crc.h"
 
-void __cyg_profile_func_enter (void *func, void *caller) {
-    // RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
-    // RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_CRC, ENABLE);
-    // GPIO_SetBits(GPIOD, GPIO_Pin_12);
+block_header_t __attribute__((section("flash00hdr"))) FlashHeader0;
+block_header_t __attribute__((section("flash01hdr"))) FlashHeader1;
+block_header_t __attribute__((section("flash02hdr"))) FlashHeader2;
+block_header_t __attribute__((section("flash03hdr"))) FlashHeader3;
+block_header_t __attribute__((section("flash04hdr"))) FlashHeader4;
+block_header_t __attribute__((section("flash05hdr"))) FlashHeader5;
+block_header_t __attribute__((section("flash06hdr"))) FlashHeader6;
+block_header_t __attribute__((section("flash07hdr"))) FlashHeader7;
+block_header_t __attribute__((section("flash08hdr"))) FlashHeader8;
+block_header_t __attribute__((section("flash09hdr"))) FlashHeader9;
+block_header_t __attribute__((section("flash10hdr"))) FlashHeader10;
+block_header_t __attribute__((section("flash11hdr"))) FlashHeader11;
+block_header_t __attribute__((section("flash12hdr"))) FlashHeader12;
+block_header_t __attribute__((section("flash13hdr"))) FlashHeader13;
+block_header_t __attribute__((section("flash14hdr"))) FlashHeader14;
+block_header_t __attribute__((section("flash15hdr"))) FlashHeader15;
+block_header_t __attribute__((section("flash16hdr"))) FlashHeader16;
+block_header_t __attribute__((section("flash17hdr"))) FlashHeader17;
 
-    // Delay(0xFFFFF);
-    // CRC_ResetDR();
-    // CRC->CR=1;
+/* block_header_t FlashHeader18 __attribute__((section("flash18"))); */
 
-    // uint32_t addr = (uint32_t)func;
-    // blockHeader* pointer = (blockHeader*)(addr-9);  //-9  (hardcoded for my testing so far) because struct size = 8 and a 1 byte arm thumb code pointer between
-    //                                                 //the header and the function.
+CRCCheck_t sections[15] = {
+	 NULL,
+	 section04_profile_func_enter,
+	 section05_profile_func_enter,
+	 section06_profile_func_enter,
+	 section07_profile_func_enter,
+	 section08_profile_func_enter,
+	 section09_profile_func_enter,
+	 section10_profile_func_enter,
+	 section11_profile_func_enter,
+	 section12_profile_func_enter,
+	 section13_profile_func_enter,
+	 section14_profile_func_enter,
+	 section15_profile_func_enter,
+	 section16_profile_func_enter,
+	 section17_profile_func_enter /* ,
+	 section18_profile_func_enter */
+};
 
-    // uint32_t* functionPtr = (uint32_t*)func;
-    // uint32_t calcCrc = CRC_CalcBlockCRC(functionPtr, pointer->length/4);
-    // CRC_ResetDR();
+CRCCheck_t little_sections[4] = {
+	 section00_profile_func_enter,
+	 section01_profile_func_enter,
+	 section02_profile_func_enter,
+	 section03_profile_func_enter
+};
 
-    // if(pointer->blockCRC == calcCrc) {
-    //     GPIO_SetBits(GPIOD, GPIO_Pin_15);
-    // } else {
-    //     GPIO_SetBits(GPIOD, GPIO_Pin_14);
-    // }
-    // Delay(0xFFFFF);
-    // GPIO_ResetBits(GPIOD, GPIO_Pin_12 | GPIO_Pin_14 | GPIO_Pin_15);
-    // RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, DISABLE);
-    // RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_CRC, DISABLE);
+
+
+void __cyg_profile_func_enter (void* this_func, void* caller)
+			{
+
+	uint32_t secnum = (((uint32_t)caller) >> 16) & 0x0000000F;
+
+	if (secnum > 0) {
+		(*sections[secnum])();
+	}
+	else {
+		secnum = (((uint32_t)caller) >> 14) & 3u;
+		(*sections[secnum])();
+	}
 }
 
+/**************************************************************************/
+
+void section00_profile_func_enter (void) {
+	profile_function(&FlashHeader0);
+}
+
+/**************************************************************************/
+
+void section01_profile_func_enter (void) {
+	profile_function(&FlashHeader1);
+}
+
+/**************************************************************************/
+
+void section02_profile_func_enter (void) {
+	profile_function(&FlashHeader2);
+}
+
+/**************************************************************************/
+
+void section03_profile_func_enter (void) {
+	profile_function(&FlashHeader3);
+}
+
+/**************************************************************************/
+
+void section04_profile_func_enter (void) {
+	profile_function(&FlashHeader4);
+}
+
+/**************************************************************************/
+
+void section05_profile_func_enter (void) {
+	profile_function(&FlashHeader5);
+}
+
+/**************************************************************************/
+
+void section06_profile_func_enter (void) {
+	profile_function(&FlashHeader6);
+}
+
+/**************************************************************************/
+
+void section07_profile_func_enter (void) {
+	profile_function(&FlashHeader7);
+}
+
+/**************************************************************************/
+
+void section08_profile_func_enter (void) {
+	profile_function(&FlashHeader8);
+}
+
+/**************************************************************************/
+
+void section09_profile_func_enter (void) {
+	profile_function(&FlashHeader9);
+}
+
+/**************************************************************************/
+
+void section10_profile_func_enter (void) {
+	profile_function(&FlashHeader10);
+}
+
+/**************************************************************************/
+
+void section11_profile_func_enter (void) {
+	profile_function(&FlashHeader11);
+}
+
+/**************************************************************************/
+
+void section12_profile_func_enter (void) {
+	profile_function(&FlashHeader12);
+}
+
+/**************************************************************************/
+
+void section13_profile_func_enter (void) {
+	profile_function(&FlashHeader13);
+}
+
+/**************************************************************************/
+
+void section14_profile_func_enter (void) {
+	profile_function(&FlashHeader14);
+}
+
+/**************************************************************************/
+
+void section15_profile_func_enter (void) {
+	profile_function(&FlashHeader15);
+}
+
+/**************************************************************************/
+
+void section16_profile_func_enter (void) {
+	profile_function(&FlashHeader16);
+}
+
+/**************************************************************************/
+
+void section17_profile_func_enter (void) {
+	profile_function(&FlashHeader17);
+}
+
+/**************************************************************************/
+/*
+void section18_profile_func_enter (void) {
+	profile_function(&FlashHeader18);
+}
+*/
 void __cyg_profile_func_exit(void *func, void *caller) {
     return;
-}
-
-void Delay(__IO uint32_t nCount) {
-  while(nCount--) {
-  }
 }
