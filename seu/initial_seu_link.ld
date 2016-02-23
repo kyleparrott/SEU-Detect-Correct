@@ -70,8 +70,8 @@ SECTIONS
         _text = .;
         PROVIDE(stext = .);
         KEEP(*(.isr_vector))
-        *(.text)
-        *(.text*)
+        /*(.text)
+        *(.text*)*/
         *(.rodata .rodata.*)
         *(.gnu.linkonce.t.*)
         *(.glue_7)
