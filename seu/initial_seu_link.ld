@@ -43,6 +43,26 @@ MEMORY
 
 SECTIONS
 {
+	.text00 : { . = ALIGN(4); *(.flash00hdr); *(.flash00func); } >flash00
+	.text01 : { . = ALIGN(4); *(.flash01hdr); *(.flash01func); } >flash01
+	.text02 : { . = ALIGN(4); *(.flash02hdr); *(.flash02func); } >flash02
+	.text03 : { . = ALIGN(4); *(.flash03hdr); *(.flash03func); } >flash03
+	.text04 : { . = ALIGN(4); *(.flash04hdr); *(.flash04func); } >flash04
+	.text05 : { . = ALIGN(4); *(.flash05hdr); *(.flash05func); } >flash05
+	.text06 : { . = ALIGN(4); *(.flash06hdr); *(.flash06func); } >flash06
+	.text07 : { . = ALIGN(4); *(.flash07hdr); *(.flash07func); } >flash07
+	.text08 : { . = ALIGN(4); *(.flash08hdr); *(.flash08func); } >flash08
+	.text09 : { . = ALIGN(4); *(.flash09hdr); *(.flash09func); } >flash09
+	.text10 : { . = ALIGN(4); *(.flash10hdr); *(.flash10func); } >flash10
+	.text11 : { . = ALIGN(4); *(.flash11hdr); *(.flash11func); } >flash11
+	.text12 : { . = ALIGN(4); *(.flash12hdr); *(.flash12func); } >flash12
+	.text13 : { . = ALIGN(4); *(.flash13hdr); *(.flash13func); } >flash13
+	.text14 : { . = ALIGN(4); *(.flash14hdr); *(.flash14func); } >flash14
+	.text15 : { . = ALIGN(4); *(.flash15hdr); *(.flash15func); } >flash15
+	.text16 : { . = ALIGN(4); *(.flash16hdr); *(.flash16func); } >flash16
+	.text17 : { . = ALIGN(4); *(.flash17hdr); *(.flash17func); } >flash17
+	/*	.text18 : { . = ALIGN(4); *(.flash18hdr); *(.flash18func); } >flash18 */
+
 
     .text :
     {

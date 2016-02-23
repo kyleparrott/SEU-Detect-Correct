@@ -18,7 +18,7 @@
 #
 
 import re
-import os 
+import os
 
 linkScriptTemplate = os.path.join('seu', 'initial_seu_link.ld')
 generatedLinkerScript = os.path.join('seu', 'gen', 'secondary_seu_link.ld')
@@ -27,16 +27,16 @@ elfInput = os.path.join('seu', 'gen', 'readElf.data')
 cfileName = os.path.join('seu', 'gen', 'secondary_seu_headers.c')
 cIncludes = '#include <stdint.h>\n#include "block_header.h"\n\n'
 
-cEntry = 'blockHeader BlockHeader%s __attribute__((section (".FlashHeader%s"))) = {%i, %i};\n'
+cEntry = 'block_header_t BlockHeader%s __attribute__((section (".FlashHeader%s"))) = {%i, %i};\n'
 cSectionName = '.header.%s'
 functionMap = os.path.join('seu', 'gen', 'addressDump.data')
 
 sectionFormat = '''
-    .text%s : 
+    .text%s :
     {
         . = ALIGN(4);
         *(.FlashHeader%s)
-%s    
+%s
     } >flash%02i'''
 
 
@@ -50,7 +50,7 @@ HEADERSIZE = 16 #bits (Accounting for the 2 bytes pading added to the 6 byte hea
 WORDSIZE = 32 #bits
 
 
-class LSSection: 
+class LSSection:
     def __init__(self, name, number, length):
         self.name = name
         self.number = number
@@ -86,7 +86,7 @@ linkScriptSectionArray.append( LSSection('.text14', 14, SIXTY_FOUR_K))
 linkScriptSectionArray.append( LSSection('.text15', 15, SIXTY_FOUR_K))
 linkScriptSectionArray.append( LSSection('.text16', 16, SIXTY_FOUR_K))
 # linkScriptSectionArray.append( LSSection('.text17', 18, ONE_TWENTY_EIGHT_K)) Where everything else is being dumped at the moment
-# linkScriptSectionArray.append( LSSection('.text18', 19, SIXTY_FOUR_K)) 
+# linkScriptSectionArray.append( LSSection('.text18', 19, SIXTY_FOUR_K))
 
 #Read function address map file into an array
 with open(functionMap, 'r') as addressFile:
@@ -112,16 +112,16 @@ with open(linkScriptTemplate, 'r') as templateFile:
                 if runningSize + entry.length < linkScriptSectionArray[x].length:
                     sectionString += functionEntryFormat % entry.name
                     runningSize += entry.length
-                    runningSize += HEADERSIZE # Account for word aligned header size 
+                    runningSize += HEADERSIZE # Account for word aligned header size
                     runningSize += entry.length % WORDSIZE #Try to compensate for alignment
 
-                else: 
+                else:
                     outputFile.write(sectionFormat % (linkScriptSectionArray[x].number, linkScriptSectionArray[x].number, sectionString, linkScriptSectionArray[x].number))
                     x+=1
                     runningSize = 0
-            outputFile.write(sectionFormat % (linkScriptSectionArray[x].number, linkScriptSectionArray[x].number, sectionString, linkScriptSectionArray[x].number)) # Write final section to file 
-            
-            for index in range(x+1, len(linkScriptSectionArray)): #include the empty sections (if any) in the linkerscript 
+            outputFile.write(sectionFormat % (linkScriptSectionArray[x].number, linkScriptSectionArray[x].number, sectionString, linkScriptSectionArray[x].number)) # Write final section to file
+
+            for index in range(x+1, len(linkScriptSectionArray)): #include the empty sections (if any) in the linkerscript
                     outputFile.write(sectionFormat % (linkScriptSectionArray[index].number, linkScriptSectionArray[index].number, '', linkScriptSectionArray[index].number))
 
             for line in tailTemplateData:    #write second half of linkerscript
