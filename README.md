@@ -2,12 +2,11 @@
 Software for detecting and correcting Single Event Upset errors in the program code memory.
 
 ### Pre-Requisites
-1. Download Reed Soloman library from http://freecode.com/urls/a0337fa2275b870b5c47552ac311c360
+TODO: Write Pre-Requisites
 
 ## Usage
 1. cd to SEU root directory
-2. enter 'make SEU'
-3. enter './SEU'
+2. enter 'make all'
 
 ## Contributing
 1. Fork it!
