@@ -8,7 +8,7 @@ int main()
 }
 
 
-void fix_flash(uint16_t **ptrs, uint16_t *corrected_values)
+void fix_flash(uint16_t* ptrs[MAX_RS_FIXES], uint16_t *corrected_values)
 {
 	uint32_t psize;
 	uint_t   segnum = get_flash_segment_number(ptr1);
