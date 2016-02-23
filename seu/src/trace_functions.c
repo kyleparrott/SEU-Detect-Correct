@@ -18,24 +18,24 @@
 #include <stm32f4xx.h>
 #include "crc.h"
 
-block_header_t __attribute__((section("flash00hdr"))) FlashHeader0;
-block_header_t __attribute__((section("flash01hdr"))) FlashHeader1;
-block_header_t __attribute__((section("flash02hdr"))) FlashHeader2;
-block_header_t __attribute__((section("flash03hdr"))) FlashHeader3;
-block_header_t __attribute__((section("flash04hdr"))) FlashHeader4;
-block_header_t __attribute__((section("flash05hdr"))) FlashHeader5;
-block_header_t __attribute__((section("flash06hdr"))) FlashHeader6;
-block_header_t __attribute__((section("flash07hdr"))) FlashHeader7;
-block_header_t __attribute__((section("flash08hdr"))) FlashHeader8;
-block_header_t __attribute__((section("flash09hdr"))) FlashHeader9;
-block_header_t __attribute__((section("flash10hdr"))) FlashHeader10;
-block_header_t __attribute__((section("flash11hdr"))) FlashHeader11;
-block_header_t __attribute__((section("flash12hdr"))) FlashHeader12;
-block_header_t __attribute__((section("flash13hdr"))) FlashHeader13;
-block_header_t __attribute__((section("flash14hdr"))) FlashHeader14;
-block_header_t __attribute__((section("flash15hdr"))) FlashHeader15;
-block_header_t __attribute__((section("flash16hdr"))) FlashHeader16;
-block_header_t __attribute__((section("flash17hdr"))) FlashHeader17;
+block_header_t __attribute__((section(".flash00hdr"))) FlashHeader0;
+block_header_t __attribute__((section(".flash01hdr"))) FlashHeader1;
+block_header_t __attribute__((section(".flash02hdr"))) FlashHeader2;
+block_header_t __attribute__((section(".flash03hdr"))) FlashHeader3;
+block_header_t __attribute__((section(".flash04hdr"))) FlashHeader4;
+block_header_t __attribute__((section(".flash05hdr"))) FlashHeader5;
+block_header_t __attribute__((section(".flash06hdr"))) FlashHeader6;
+block_header_t __attribute__((section(".flash07hdr"))) FlashHeader7;
+block_header_t __attribute__((section(".flash08hdr"))) FlashHeader8;
+block_header_t __attribute__((section(".flash09hdr"))) FlashHeader9;
+block_header_t __attribute__((section(".flash10hdr"))) FlashHeader10;
+block_header_t __attribute__((section(".flash11hdr"))) FlashHeader11;
+block_header_t __attribute__((section(".flash12hdr"))) FlashHeader12;
+block_header_t __attribute__((section(".flash13hdr"))) FlashHeader13;
+block_header_t __attribute__((section(".flash14hdr"))) FlashHeader14;
+block_header_t __attribute__((section(".flash15hdr"))) FlashHeader15;
+block_header_t __attribute__((section(".flash16hdr"))) FlashHeader16;
+block_header_t __attribute__((section(".flash17hdr"))) FlashHeader17;
 
 /* block_header_t FlashHeader18 __attribute__((section("flash18"))); */
 

@@ -75,7 +75,7 @@ SEUFLAG=-finstrument-functions
 
 INITIAL_LINKERSCRIPT=-Tseu/initial_seu_link.ld
 SECONDARY_LINKERSCRIPT=-Tseu/gen/secondary_seu_link.ld
-HEADER_SRC=seu/gen/secondary_seu_headers.c
+HEADER_SRC=seu/gen/secondary_seu_headers.c 
 HEADER_OBJ=build/secondary_seu_headers.o
 TRACE_FILE = seu/src/trace_functions.c
 TRACE_OBJ = build/trace_functions.o
@@ -119,7 +119,7 @@ INITIAL_COMPILATION: UNCHECKED_OBJS
 INITIAL_PROFILER: INITIAL_COMPILATION
 	@echo "Starting Initial Profiler"
 	@test -d seu/gen || mkdir -p seu/gen
-	@$(READELF) -s --wide $(BIN_DIR)/initial$(TARGET).elf | grep "FUNC" | awk '{print $$2 " " $$3 " " $$8}' > seu/gen/addressDump.data
+	@$(READELF) --wide -s binary/initialFreeRTOS.elf| grep -v "$t\|$d" | sort -k 2 | awk '{print $$2 " " $$3 " " $$8 }' > seu/gen/fullMap.data
 	@$(PYTHON) seu/initial_profiler.py
 	@$(CC) $(CFLAGS) -c $(HEADER_SRC) -o $(HEADER_OBJ)
 	@echo "initial Profiler Completed"
@@ -135,6 +135,8 @@ clean:
 	@echo [RM] OBJ
 	@rm -f $(OBJ)
 	@rm -f build/*.o
+	@rm -f binary/*.elf
 	@rm -f seu/gen/*
+	@rm -f $(ASRC:%.s=$(BUILD_DIR)/%.o)
 	@echo [RM] BIN
-	@rm -f $(BIN_DIR)/*.elf
+	@rm -f $(BIN_DIR)/$(TARGET).elf
