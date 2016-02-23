@@ -29,7 +29,7 @@ cIncludes = '#include <stdint.h>\n#include "block_header.h"\n\n'
 
 cEntry = 'block_header_t BlockHeader%s __attribute__((section (".FlashHeader%s"))) = {%i, %i};\n'
 cSectionName = '.header.%s'
-functionMap = os.path.join('seu', 'gen', 'addressDump.data')
+functionMap = os.path.join('seu', 'gen', 'fullMap.data')
 
 sectionFormat = '''
     .text%s :
@@ -40,7 +40,7 @@ sectionFormat = '''
     } >flash%02i'''
 
 
-functionEntryFormat = '        *(.text.%s)\n'
+functionEntryFormat = '        *(.*.%s)\n'
 
 SIXTEEN_K = 16 * 1024
 SIXTY_FOUR_K = 64 * 1024
@@ -85,20 +85,23 @@ linkScriptSectionArray.append( LSSection('.text13', 13, SIXTY_FOUR_K))
 linkScriptSectionArray.append( LSSection('.text14', 14, SIXTY_FOUR_K))
 linkScriptSectionArray.append( LSSection('.text15', 15, SIXTY_FOUR_K))
 linkScriptSectionArray.append( LSSection('.text16', 16, SIXTY_FOUR_K))
-# linkScriptSectionArray.append( LSSection('.text17', 18, ONE_TWENTY_EIGHT_K)) Where everything else is being dumped at the moment
-# linkScriptSectionArray.append( LSSection('.text18', 19, SIXTY_FOUR_K))
+# linkScriptSectionArray.append( LSSection('.text17', 17, ONE_TWENTY_EIGHT_K)) Where everything else is being dumped at the moment
+# linkScriptSectionArray.append( LSSection('.text18', 18, SIXTY_FOUR_K)) 
+
+lineRegex = re.compile('08\S{6}\s')
 
 #Read function address map file into an array
 with open(functionMap, 'r') as addressFile:
     for line in addressFile:
         addressData = line.split()
-        if int(addressData[1], 16) != 0 and 'handler' not in addressData[2].lower() and addressData[2] not in nameArray: #if the size of the function is not zero and its name does not include handler
-            nameArray.append(addressData[2])
-            sectionDataArray.append(SectionDataObj(regex.sub('', addressData[2]), addressData[0], addressData[1]))
+        if lineRegex.match(line):
+            if int(addressData[1], 16) != 0 and 'handler' not in addressData[2].lower() and addressData[2] not in nameArray: #if the size of the function is not zero and its name does not include handler
+                nameArray.append(addressData[2])
+                sectionDataArray.append(SectionDataObj(regex.sub('', addressData[2]), addressData[0], addressData[1]))
 
 # Write linkerscript to file
 with open(linkScriptTemplate, 'r') as templateFile:
-        headerTemplateData = [next(templateFile) for n in range(45)] #fixed file lengths
+        headerTemplateData = [next(templateFile) for n in range(64)] #fixed file lengths
         tailTemplateData = [next(templateFile) for n in range(68)]
         with open(generatedLinkerScript, 'w') as outputFile:
             x = 0
@@ -117,11 +120,12 @@ with open(linkScriptTemplate, 'r') as templateFile:
 
                 else:
                     outputFile.write(sectionFormat % (linkScriptSectionArray[x].number, linkScriptSectionArray[x].number, sectionString, linkScriptSectionArray[x].number))
-                    x+=1
+                    x += 1
                     runningSize = 0
-            outputFile.write(sectionFormat % (linkScriptSectionArray[x].number, linkScriptSectionArray[x].number, sectionString, linkScriptSectionArray[x].number)) # Write final section to file
 
-            for index in range(x+1, len(linkScriptSectionArray)): #include the empty sections (if any) in the linkerscript
+            outputFile.write(sectionFormat % (linkScriptSectionArray[x].number, linkScriptSectionArray[x].number, sectionString, linkScriptSectionArray[x].number)) # Write final section to file 
+            
+            for index in range(x + 1, len(linkScriptSectionArray)): #include the empty sections (if any) in the linkerscript 
                     outputFile.write(sectionFormat % (linkScriptSectionArray[index].number, linkScriptSectionArray[index].number, '', linkScriptSectionArray[index].number))
 
             for line in tailTemplateData:    #write second half of linkerscript
