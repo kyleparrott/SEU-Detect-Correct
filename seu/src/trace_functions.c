@@ -17,6 +17,7 @@
 
 #include <stm32f4xx.h>
 #include "crc.h"
+const uint32_t BLK_15_START = 0x080C0000;
 
 block_header_t __attribute__((section(".flash00hdr"))) FlashHeader0;
 block_header_t __attribute__((section(".flash01hdr"))) FlashHeader1;
@@ -198,3 +199,29 @@ void section18_profile_func_enter (void) {
 void __cyg_profile_func_exit(void *func, void *caller) {
     return;
 }
+
+void flash_copy_to_work(uint32_t* blk_ptr, uint32_t blk_size){
+	uint32_t idx;
+	uint32_t* dest = (uint32_t*) BLK_15_START;
+	for (idx = 0; idx < blk_size; idx++) {
+		dest[idx] = blk_ptr[idx];
+	}
+}
+
+ void flash_copy_from_work(uint32_t* blk_ptr, uint32_t blk_size, uint32_t* fix_ptrs[16], uint32_t fix_values[16], uint32_t fix_count) {
+ 	uint32_t* src_blk = (uint32_t*) BLK_15_START;
+ 	uint32_t* new_address = 0;
+ 	uint32_t  idx;
+ 	uint8_t  fixup_index = 0; // keeps track of fix_ptrs, fix_values iterations
+
+ 	for (idx = 0; idx < blk_size; idx++) {
+ 		new_address = blk_ptr + idx; 
+
+ 		if (new_address == fix_ptrs[fixup_index]) { // this assumes the fix_ptrs[] elements are sorted
+ 			blk_ptr[idx] = fix_values[fixup_index];
+ 			fixup_index++;
+ 		} else {
+ 			blk_ptr[idx] = src_blk[idx];	
+ 		}
+ 	}
+ }
