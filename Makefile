@@ -20,7 +20,7 @@ INCLUDE+=-I$(CURDIR)/Libraries/CMSIS/Device/ST/STM32F4xx/Include
 INCLUDE+=-I$(CURDIR)/Libraries/CMSIS/Include
 INCLUDE+=-I$(CURDIR)/Libraries/STM32F4xx_StdPeriph_Driver/inc
 INCLUDE+=-I$(CURDIR)/config
-INCLUDE+=-Iseu/src
+INCLUDE+=-Iseu/include
 
 BUILD_DIR = $(CURDIR)/build
 BIN_DIR = $(CURDIR)/binary
@@ -34,7 +34,7 @@ vpath %.c $(CURDIR)/Libraries/STM32F4xx_StdPeriph_Driver/src \
 	  $(CURDIR)/Libraries/syscall $(CURDIR)/hardware $(FREERTOS) \
 	  $(FREERTOS)/portable/MemMang $(FREERTOS)/portable/GCC/ARM_CM4F
 
-UNCHECKED_SRC =stm32f4xx_it.c #compiled without finstrument-function
+UNCHECKED_SRC := stm32f4xx_it.c #compiled without finstrument-function
 SRC+=system_stm32f4xx.c
 SRC+=main.c
 SRC+=syscalls.c
@@ -80,7 +80,8 @@ SEUFLAG=-finstrument-functions
 
 INITIAL_LINKERSCRIPT=-Tseu/initial_seu_link.ld
 SECONDARY_LINKERSCRIPT=-Tseu/gen/secondary_seu_link.ld
-TRACE_FILE = seu/src/trace_functions.c
+# TRACE_FILES = seu/src/trace_functions.c seu/src/alpha_to.c seu/src/decode_rs.c seu/src/genpoly.c src/index_of.c
+TRACE_FILES = seu/src/trace_functions.c
 TRACE_OBJ = build/trace_functions.o
 
 # don't count on having the tools in the PATH...
@@ -111,7 +112,7 @@ $(BUILD_DIR)/%.o: %.c
 
 UNCHECKED_OBJS: $(OBJ)
 	@$(CC) $(CFLAGS) hardware/stm32f4xx_it.c -c -o build/stm32f4xx_it.o
-	@$(CC) $(CFLAGS) $(TRACE_FILE) -c -o $(TRACE_OBJ)
+	@$(CC) $(CFLAGS) $(TRACE_FILES) -c -o $(TRACE_OBJ)
 
 INITIAL_COMPILATION: UNCHECKED_OBJS
 	@echo "[AS] $(ASRC)"
@@ -129,7 +130,7 @@ INITIAL_PROFILER: INITIAL_COMPILATION
 
 SECONDARY_COMPILATION: INITIAL_PROFILER
 	@echo "Starting Secondary Complilation"
-	@$(CC) -Wl,-Map,output.map -o $(BIN_DIR)/final$(TARGET).elf $(SECONDARY_LINKERSCRIPT) $(LDFLAGS) $(OBJ) $(TRACE_OBJ) $(HEADER_OBJ) $(ASRC:%.s=$(BUILD_DIR)/%.o) $(LDLIBS)
+	@$(CC) -Wl,-Map,$(TARGET).map -o $(BIN_DIR)/final$(TARGET).elf $(SECONDARY_LINKERSCRIPT) $(LDFLAGS) $(OBJ) $(TRACE_OBJ) $(HEADER_OBJ) $(ASRC:%.s=$(BUILD_DIR)/%.o) $(LDLIBS)
 	@echo "Secondary Complilation Completed"
 
 .PHONY: clean

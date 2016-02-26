@@ -1,13 +1,3 @@
-/* General purpose Reed-Solomon decoder
- * Copyright 2003 Phil Karn, KA9Q
- * May be used under the terms of the GNU Lesser General Public License (LGPL)
- */
-
-#include "rs.h"
-#include <stdio.h>
-
-int decode_rs(symbol_t *data)
-{
 	int deg_lambda, el, deg_omega;
 	int i, j, r, k;
 	uint16_t q, tmp, num1, num2, den, discr_r;
@@ -15,7 +5,7 @@ int decode_rs(symbol_t *data)
 	                                       						 * and syndrome poly */
 	symbol_t b[PARITY_SYMBOL_COUNT + 1], t[PARITY_SYMBOL_COUNT + 1], omega[PARITY_SYMBOL_COUNT + 1];
 	symbol_t root[PARITY_SYMBOL_COUNT], reg[PARITY_SYMBOL_COUNT + 1], loc[PARITY_SYMBOL_COUNT];
-	int syn_error, count;
+	int syn_error, count, corrections;
 
 	/* form the syndromes; i.e., evaluate data(x) at roots of g(x) */
 	for (i = 0; i < PARITY_SYMBOL_COUNT; i++) {
@@ -140,9 +130,6 @@ int decode_rs(symbol_t *data)
 			continue; /* Not a root */
 		}
 		/* store root (index-form) and error location number */
-#if DEBUG >= 2
-		printf("count %d root %d loc %d\n", count, i, k);
-#endif
 		root[count] = i;
 		loc[count] = k;
 		/* If we've already found max possible roots,
@@ -158,7 +145,6 @@ int decode_rs(symbol_t *data)
 		 * deg(lambda) unequal to number of roots => uncorrectable
 		 * error detected
 		 */
-printf("deg_lambda != count\n %d, %d", deg_lambda, count);
 		return -5;
 	}
 
@@ -181,6 +167,7 @@ printf("deg_lambda != count\n %d, %d", deg_lambda, count);
 	 * Compute error values in poly-form. num1 = omega(inv(X(l))), num2 =
 	 * inv(X(l))**(FCR-1) and den = lambda_pr(inv(X(l))) all in poly-form
 	 */
+	corrections = 0;
 	for (j = count - 1; j >= 0; j--) {
 		num1 = 0;
 		for (i = deg_omega; i >= 0; i--) {
@@ -197,21 +184,16 @@ printf("deg_lambda != count\n %d, %d", deg_lambda, count);
 				den ^= symbol_get(alpha_to, modnn(lambda[i + 1] + i * root[j]));
 			}
 		}
-#if DEBUG >= 1
-		if (den == 0) {
-			printf("\n ERROR: denominator = 0\n");
-			return -6;
-		}
-#endif
+
 		/* Apply error to data */
 		if ((num1 != 0)) {
-			symbol_put(data, loc[j], symbol_get(data, loc[j]) ^ symbol_get(alpha_to, modnn(symbol_get(index_of, num1) + symbol_get(index_of, num2) + TOTAL_SYMBOL_COUNT - symbol_get(index_of, den))));
-		}
+			if (corrections >= RS_MAX_ERRORS) {
+				return -8
+			}
+			offsets[corrections] = symbol_address_offset(data, loc[j]);
+			values[corrections++] = symbol_get(alpha_to, modnn(symbol_get(index_of, num1) + symbol_get(index_of, num2) + TOTAL_SYMBOL_COUNT - symbol_get(index_of, den)));
+/*			symbol_put(data, loc[j], symbol_get(data, loc[j]) ^ symbol_get(alpha_to, modnn(symbol_get(index_of, num1) + symbol_get(index_of, num2) + TOTAL_SYMBOL_COUNT - symbol_get(index_of, den))));
+ */		}
 	}
 
-#if DEBUG >= 1
-	printf("returning %d\n", count);
-#endif
-
-	return count;
-}
+	return corrections;

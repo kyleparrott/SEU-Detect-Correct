@@ -7,19 +7,16 @@
 #define _RS_H
 
 #include <stdint.h>
-#include <string.h>
+#include <reed_solomon.h>
 
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
 
-typedef uint16_t symbol_t; /* the lower BITS_PER_SYMBOL bits are valid */
-typedef uint16_t word_t;
 typedef uint32_t dword_t;
 
 #define GFPOLY 0x201B
 
 #define BITS_PER_SYMBOL		13
 #define SYMBOL_MASK			((1 << BITS_PER_SYMBOL) - 1) /* 0x1FFF (8192 - 1) symbols per block */
-#define RS_MAX_ERRORS		8 /* Tolerate up to 8 errors per block */
 #define TOTAL_SYMBOL_COUNT	((1 << BITS_PER_SYMBOL) - 1) /* 0x1FFF (8192 - 1) symbols per block */
 #define PARITY_SYMBOL_COUNT	(RS_MAX_ERRORS * 2)
 #define DATA_SYMBOL_COUNT	(TOTAL_SYMBOL_COUNT - PARITY_SYMBOL_COUNT)
@@ -44,6 +41,10 @@ inline static symbol_t __attribute__((no_instrument_function, always_inline)) sy
 	return ((symbol_t)(*((dword_t*)&ptr[word_idx]) >> bits_offset) & SYMBOL_MASK);
 };
 
+inline static word_t* __attribute__((no_instrument_function, always_inline)) symbol_address_offset(symbol_t* ptr, int idx) {
+	return DIVIDE_BY_BITS_PER_WORD(idx * BITS_PER_SYMBOL);;
+};
+
 inline static void __attribute__((no_instrument_function, always_inline)) symbol_put(symbol_t* ptr, int idx, symbol_t sym) {
 	GET_PARTS(idx);
 	*((dword_t*)&ptr[word_idx]) = ((*((dword_t*)&ptr[word_idx]) & ~((dword_t)SYMBOL_MASK << bits_offset)) |
@@ -58,12 +59,6 @@ inline static symbol_t __attribute__((no_instrument_function, always_inline)) mo
 	}
 	return x;
 }
-
-
-/* General purpose RS codec, integer symbols */
-void encode_rs(symbol_t* data);
-int decode_rs(symbol_t* data);
-void init_rs(void);
 
 #ifndef _INIT_RS_C
 extern symbol_t alpha_to[SYMBOL_TABLE_WORDS]; /* log lookup table */
