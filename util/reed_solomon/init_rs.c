@@ -3,17 +3,16 @@
  * Copyright 2002 Phil Karn, KA9Q
  * May be used under the terms of the GNU Lesser General Public License (LGPL)
  */
+
+#define _INIT_RS_C
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "rs.h"
 
-void free_rs(rs_t* rs)
-{
-	free(rs->alpha_to);
-	free(rs->index_of);
-	free(rs->genpoly);
-	free((void*)rs);
-}
+symbol_t alpha_to[SYMBOL_TABLE_WORDS]; /* log lookup table */
+symbol_t index_of[SYMBOL_TABLE_WORDS]; /* Antilog lookup table */
+symbol_t genpoly[PARITY_SYMBOL_WORDS];  /* Generator polynomial */
 
 /* Initialize a Reed-Solomon codec
  * symsize = symbol size, bits
@@ -23,115 +22,48 @@ void free_rs(rs_t* rs)
  * nroots = RS code generator polynomial degree (number of roots)
  * pad = padding bytes at front of shortened block
  */
-rs_t* init_rs(int symsize, int gfpoly, int fcr, int prim, int nroots, int pad)
+void init_rs(void)
 {
-	rs_t* rs;
 
-	int i, j, sr, root, iprim;
+#ifdef RS_BUILD_TABLES
+	int i, j;
+	word_t sr, root;
 
-	rs = NULL;
-	/* Check parameter ranges */
-	if ((symsize < 0) || (symsize > 8 * sizeof(uint16_t))) {
-		goto done;
-	}
-
-	if ((fcr < 0) || (fcr >= (1 << symsize))) {
-		goto done;
-	}
-	if ((prim <= 0) || (prim >= (1 << symsize))) {
-		goto done;
-	}
-	if ((nroots < 0) || (nroots >= (1 << symsize))) {
-		goto done; /* Can't have more roots than symbol values! */
-	}
-	if ((pad < 0) || (pad >= ((1 << symsize) - 1 - nroots))) {
-		goto done; /* Too much padding */
-
-	}
-	rs = (rs_t*)calloc(1, sizeof(rs_t));
-	if (rs == NULL) {
-		goto done;
-	}
-
-	rs->mm = symsize;
-	rs->nn = (1 << symsize) - 1;
-	rs->pad = pad;
-
-	rs->alpha_to = (uint16_t *)malloc(sizeof(uint16_t) * (rs->nn + 1));
-	if (rs->alpha_to == NULL) {
-		free(rs);
-		rs = NULL;
-		goto done;
-	}
-	rs->index_of = (uint16_t *)malloc(sizeof(uint16_t) * (rs->nn + 1));
-	if (rs->index_of == NULL) {
-		free(rs->alpha_to);
-		free(rs);
-		rs = NULL;
-		goto done;
-	}
-
-	/* Generate Galois field lookup tables */
-	rs->index_of[0] = A0;   /* log(zero) = -inf */
-	rs->alpha_to[A0] = 0;   /* alpha**-inf = 0 */
+		/* Generate Galois field lookup tables */
+	symbol_put(index_of, 0, SYMBOL_MASK);   /* log(zero) = -inf */
+	symbol_put(alpha_to, TOTAL_SYMBOL_COUNT, 0);   /* alpha**-inf = 0 */
 	sr = 1;
-	for (i = 0; i < rs->nn; i++) {
-		rs->index_of[sr] = i;
-		rs->alpha_to[i] = sr;
+	for (i = 0; i < TOTAL_SYMBOL_COUNT; i++) {
+		symbol_put(index_of, sr, i);
+		symbol_put(alpha_to, i, sr);
 		sr <<= 1;
-		if (sr & (1 << symsize)) {
-			sr ^= gfpoly;
+		if (sr & (1 << BITS_PER_SYMBOL)) {
+			sr ^= GFPOLY;
 		}
-		sr &= rs->nn;
-	}
-	if (sr != 1) {
-		/* field generator polynomial is not primitive! */
-		free(rs->alpha_to);
-		free(rs->index_of);
-		free(rs);
-		rs = NULL;
-		goto done;
+		sr &= SYMBOL_MASK;
 	}
 
 	/* Form RS code generator polynomial from its roots */
-	rs->genpoly = (uint16_t *)malloc(sizeof(uint16_t) * (nroots + 1));
-	if (rs->genpoly == NULL) {
-		free(rs->alpha_to);
-		free(rs->index_of);
-		free(rs);
-		rs = NULL;
-		goto done;
-	}
-	rs->fcr = fcr;
-	rs->prim = prim;
-	rs->nroots = nroots;
+	symbol_put(genpoly, 0, 1);
+	for (i = 0, root = FCS * PRIM; i < PARITY_SYMBOL_COUNT; i++, root += PRIM) {
+		symbol_put(genpoly, i + 1, 1);
 
-	/* Find prim-th root of 1, used in decoding */
-	for (iprim = 1; (iprim % prim) != 0; iprim += rs->nn) {
-	}
-	rs->iprim = iprim / prim;
-
-	rs->genpoly[0] = 1;
-	for (i = 0, root = fcr * prim; i < nroots; i++, root += prim) {
-		rs->genpoly[i + 1] = 1;
-
-		/* Multiply rs->genpoly[] by  @**(root + x) */
+		/* Multiply genpoly[] by  @**(root + x) */
 		for (j = i; j > 0; j--) {
-			if (rs->genpoly[j] != 0) {
-				rs->genpoly[j] = rs->genpoly[j - 1] ^ rs->alpha_to[modnn(rs, rs->index_of[rs->genpoly[j]] + root)];
+			if (symbol_get(genpoly, j) != 0) {
+				symbol_put(genpoly, j, symbol_get(genpoly, j - 1) ^ symbol_get(alpha_to, modnn(symbol_get(index_of, symbol_get(genpoly, j)) + root)));
 			}
 			else {
-				rs->genpoly[j] = rs->genpoly[j - 1];
+				symbol_put(genpoly, j, symbol_get(genpoly, j - 1));
 			}
 		}
-		/* rs->genpoly[0] can never be zero */
-		rs->genpoly[0] = rs->alpha_to[modnn(rs, rs->index_of[rs->genpoly[0]] + root)];
+		/* genpoly[0] can never be zero */
+		symbol_put(genpoly, 0, symbol_get(alpha_to, modnn(symbol_get(index_of, symbol_get(genpoly, 0)) + root)));
 	}
-	/* convert rs->genpoly[] to index form for quicker encoding */
-	for (i = 0; i <= nroots; i++) {
-		rs->genpoly[i] = rs->index_of[rs->genpoly[i]];
+	/* convert genpoly[] to index form for quicker encoding */
+	for (i = 0; i <= PARITY_SYMBOL_COUNT; i++) {
+		symbol_put(genpoly, i, symbol_get(index_of, symbol_get(genpoly, i)));
 	}
 
-done:
-	return rs;
+#endif /* RS_BUILD_TABLES */
 }

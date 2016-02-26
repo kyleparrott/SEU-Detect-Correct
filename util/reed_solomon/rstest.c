@@ -12,63 +12,64 @@
 #include "rs.h"
 
 
-struct etab {
-	int symsize;
-	int genpoly;
-	int fcs;
-	int prim;
-	int nroots;
-	int ntrials;
-} Tab = { 16, 0x1100b, 1,   1, 32, 1 };
+/* #define RS_DUMP_BLOCKS */
+/* #define RS_BUILD_TABLES */
+/* #define DEBUG 2 */
 
-int exercise_int(struct etab *e);
+
+
+int exercise_int(void);
+
+#ifdef RS_DUMP_BLOCKS
+#define RS_DUMP_SYMBOLS
+void dump_blocks(word_t* block, word_t* errblock);
+#endif
+
+#ifdef RS_BUILD_TABLES
+#define RS_DUMP_SYMBOLS
+void dump_tables(void);
+#endif
+
+#ifdef RS_DUMP_SYMBOLS
+void dump_symbols(word_t* ptr);
+#endif
 
 int main()
 {
-	int i;
-
 	srandom(time(NULL));
 
-	for (i = 0; Tab.symsize != 0; i++) {
-		int nn, kk;
+	printf("Testing (%d,%d) code...\n", TOTAL_SYMBOL_COUNT, DATA_SYMBOL_COUNT);
+	exercise_int();
 
-		nn = (1 << Tab.symsize) - 1;
-		kk = nn - Tab.nroots;
-		printf("Testing (%d,%d) code...\n", nn, kk);
-		exercise_int(&Tab);
-	}
-	exit(0);
+	return(0);
 }
 
-int exercise_int(struct etab *e)
+int exercise_int(void)
 {
-	unsigned int nn = 0xFFFF;
-	uint16_t block[nn], tblock[nn];
-	uint16_t errlocs[nn];
+	init_rs();
+
+#ifdef RS_BUILD_TABLES
+	dump_tables();
+#else
+	word_t block[SYMBOL_TABLE_WORDS], tblock[SYMBOL_TABLE_WORDS];
+	int errlocs[TOTAL_SYMBOL_COUNT];
 	int i;
-	uint16_t errors;
-	uint16_t derrors, kk;
-	uint16_t errval, errloc;
-	rs_t* rs;
+	int errors = 0;
+	int derrors;
+	symbol_t errval;
+	int errloc;
 
-	/* Compute code parameters */
-	kk = nn - e->nroots;
-
-	rs = init_rs(e->symsize, e->genpoly, e->fcs, e->prim, e->nroots, 0);
-	if (rs == NULL) {
-		printf("init_rs() failed!\n");
-		return -1;
-	}
-
+#ifndef RS_DUMP_BLOCKS
 	/* Test up to the error correction capacity of the code */
-	for (errors = 0; errors <= e->nroots / 2; errors++) {
+	for (errors = 0; errors <= RS_MAX_ERRORS; errors++) {
+#endif /* RS_DUMP_BLOCKS */
 
 		/* Load block with random data and encode */
-		for (i = 0; i < kk; i++) {
-			block[i] = random() & nn;
+		for (i = 0; i < DATA_SYMBOL_COUNT; i++) {
+			symbol_put(block, i, random() & SYMBOL_MASK);
 		}
-		memcpy(tblock, block, sizeof(block));
-		encode_rs(rs, block, &block[kk]);
+
+		encode_rs(block);
 
 		/* Make temp copy, seed with errors */
 		memcpy(tblock, block, sizeof(block));
@@ -76,36 +77,103 @@ int exercise_int(struct etab *e)
 
 		for (i = 0; i < errors; i++) {
 			do {
-				errval = random() & nn;
+				errval = random() & SYMBOL_MASK;
 			} while (errval == 0); /* Error value must be nonzero */
 
 			do {
-				errloc = random() % nn;
+				errloc = random() % TOTAL_SYMBOL_COUNT;
 			} while (errlocs[errloc] != 0); /* Must not choose the same location twice */
 
 			errlocs[errloc] = 1;
 
-			tblock[errloc] ^= errval;
+			symbol_put(tblock, errloc, symbol_get(tblock, errloc) ^ errval);
 		}
 
+#ifdef RS_DUMP_BLOCKS
+dump_blocks(block, tblock);
+#else
 		/* Decode the errored block */
-		derrors = decode_rs(rs, tblock);
+		derrors = decode_rs(tblock);
 
 		if (derrors != errors) {
-			printf("(%d,%d) decoder says %d errors, true number is %d\n", nn, kk, derrors, errors);
+			printf("(%d,%d) decoder says %d errors, true number is %d\n", TOTAL_SYMBOL_COUNT, DATA_SYMBOL_COUNT, derrors, errors);
 		}
 
 		if (memcmp(tblock, block, sizeof(tblock)) != 0) {
-			for (i = 0; i < nn; i++) {
-				if (tblock[i] ^ block[i]) {
-					printf("(%d,%d) error at %d\n", nn, kk, i);
+			for (i = 0; i < TOTAL_SYMBOL_COUNT; i++) {
+				if (symbol_get(tblock, i) ^ symbol_get(block, i)) {
+					printf("(%d,%d) error at %d\n", TOTAL_SYMBOL_COUNT, DATA_SYMBOL_COUNT, i);
 					errors++;
 				}
 			}
 			printf("\n");
 		}
 	}
-
-	free_rs(rs);
+#endif /* RS_DUMP_BLOCKS */
+#endif /* RS_BUILD_TABLES */
 	return 0;
 }
+
+#ifdef RS_DUMP_BLOCKS
+void dump_blocks(word_t* block, word_t* errblock)
+{
+	printf("word_t input_block[SYMBOL_TABLE_WORDS] = {\n");
+	dump_symbols(block);
+
+	printf("word_t error_block[SYMBOL_TABLE_WORDS] = {\n");
+	dump_symbols(errblock);
+}
+#endif
+
+#ifdef RS_BUILD_TABLES
+void dump_tables(void)
+{
+	printf("word_t alpha_to[SYMBOL_TABLE_WORDS] = {\n");
+	dump_symbols(word_t*)alpha_to);
+
+	printf("word_t index_of[SYMBOL_TABLE_WORDS] = {\n");
+	dump_symbols(word_t*)index_of);
+
+	ptr = (word_t*)genpoly;
+	printf("word_t genpoly[PARITY_SYMBOL_WORDS] = {\n");
+	i=0;
+	while(i < (PARITY_SYMBOL_COUNT - 1))
+	{
+		printf("\t");
+		do {
+			printf("0x%04X, ", symbol_get(ptr, i));
+			i++;
+		} while (((i + 1) % 8) != 0 && i < (PARITY_SYMBOL_COUNT - 1));
+		if (i < (PARITY_SYMBOL_COUNT - 1))
+		{
+			printf("0x%04X,\n", symbol_get(ptr, i));
+			i++;
+		}
+	}
+	printf("0x%04X\n};\n\n", symbol_get(ptr, i));
+}
+
+#endif /* RS_BUILD_TABLES */
+
+#ifdef RS_DUMP_SYMBOLS
+void dump_symbols(word_t* ptr) {
+	int i;
+
+	i=0;
+	while(i < (TOTAL_SYMBOL_COUNT - 1))
+	{
+		printf("\t");
+		do {
+			printf("0x%04X, ", symbol_get(ptr, i));
+			i++;
+		} while (((i + 1) % 8) != 0 && i < (TOTAL_SYMBOL_COUNT - 1));
+		if (i < (TOTAL_SYMBOL_COUNT - 1))
+		{
+			printf("0x%04X,\n", symbol_get(ptr, i));
+			i++;
+		}
+	}
+	printf("0x%04X\n};\n\n", symbol_get(ptr, i));
+}
+
+#endif

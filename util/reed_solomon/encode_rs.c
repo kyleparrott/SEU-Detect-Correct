@@ -2,31 +2,38 @@
  * Copyright 2003, Phil Karn, KA9Q
  * May be used under the terms of the GNU Lesser General Public License (LGPL)
  */
-#include <string.h>
 #include "rs.h"
 
-void encode_rs(rs_t* rs, uint16_t *data, uint16_t *parity)
+void encode_rs(symbol_t* data)
 {
 	int i, j;
-	uint16_t feedback;
+	symbol_t feedback;
+	symbol_t parity[PARITY_SYMBOL_COUNT];
 
-	memset(parity, 0, NROOTS * sizeof(uint16_t));
+	for(i=0; i<PARITY_SYMBOL_COUNT; i++) {
+		parity[i] = 0;
+	}
 
-	for (i = 0; i < NN - NROOTS - PAD; i++) {
-		feedback = INDEX_OF[data[i] ^ parity[0]];
-		if (feedback != A0) { /* feedback term is non-zero */
-			for (j = 1; j < NROOTS; j++) {
-				parity[j] ^= ALPHA_TO[MODNN(feedback + GENPOLY[NROOTS - j])];
+	for (i = 0; i < DATA_SYMBOL_COUNT; i++) {
+		feedback = symbol_get(index_of, symbol_get(data, i) ^ parity[0]);
+		if (feedback != SYMBOL_MASK) { /* feedback term is non-zero */
+			for (j = 1; j < PARITY_SYMBOL_COUNT; j++) {
+				parity[j] ^= symbol_get(alpha_to, modnn(feedback + symbol_get(genpoly, PARITY_SYMBOL_COUNT - j)));
 			}
 		}
 		/* Shift */
-		memmove(&parity[0], &parity[1], sizeof(uint16_t) * (NROOTS - 1));
-		if (feedback != A0) {
-			parity[NROOTS - 1] = ALPHA_TO[MODNN(feedback + GENPOLY[0])];
+		for(j=0; j < PARITY_SYMBOL_COUNT - 1; j++) {
+			parity[j] = parity[j+1];
+		}
+		if (feedback != SYMBOL_MASK) {
+			parity[PARITY_SYMBOL_COUNT - 1] = symbol_get(alpha_to, modnn(feedback + symbol_get(genpoly, 0)));
 		}
 		else {
-			parity[NROOTS - 1] = 0;
+			parity[PARITY_SYMBOL_COUNT - 1] = 0;
 		}
 	}
 
+	for(i=0; i<PARITY_SYMBOL_COUNT; i++) {
+		symbol_put(data, PARITY_START + i, parity[i]);
+	}
 }
