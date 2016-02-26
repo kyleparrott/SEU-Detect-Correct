@@ -80,8 +80,6 @@ SEUFLAG=-finstrument-functions
 
 INITIAL_LINKERSCRIPT=-Tseu/initial_seu_link.ld
 SECONDARY_LINKERSCRIPT=-Tseu/gen/secondary_seu_link.ld
-HEADER_SRC=seu/gen/secondary_seu_headers.c
-HEADER_OBJ=build/secondary_seu_headers.o
 TRACE_FILE = seu/src/trace_functions.c
 TRACE_OBJ = build/trace_functions.o
 
@@ -125,14 +123,13 @@ INITIAL_COMPILATION: UNCHECKED_OBJS
 INITIAL_PROFILER: INITIAL_COMPILATION
 	@echo "Starting Initial Profiler"
 	@test -d seu/gen || mkdir -p seu/gen
-	@$(READELF) --wide -s binary/initialFreeRTOS.elf| grep -v "$t\|$d" | sort -k 2 | awk '{print $$2 " " $$3 " " $$8 }' > seu/gen/fullMap.data
+	@$(READELF) --wide -s binary/initialFreeRTOS.elf| grep " FUNC    " | awk '{print $$3 " " $$8 }' | sort -k 2 | uniq -u  > seu/gen/fullMap.data
 	@$(PYTHON) seu/initial_profiler.py
-	@$(CC) $(CFLAGS) -c $(HEADER_SRC) -o $(HEADER_OBJ)
 	@echo "initial Profiler Completed"
 
 SECONDARY_COMPILATION: INITIAL_PROFILER
 	@echo "Starting Secondary Complilation"
-	@$(CC) -o $(BIN_DIR)/final$(TARGET).elf $(SECONDARY_LINKERSCRIPT) $(LDFLAGS) $(OBJ) $(TRACE_OBJ) $(HEADER_OBJ) $(ASRC:%.s=$(BUILD_DIR)/%.o) $(LDLIBS)
+	@$(CC) -Wl,-Map,output.map -o $(BIN_DIR)/final$(TARGET).elf $(SECONDARY_LINKERSCRIPT) $(LDFLAGS) $(OBJ) $(TRACE_OBJ) $(HEADER_OBJ) $(ASRC:%.s=$(BUILD_DIR)/%.o) $(LDLIBS)
 	@echo "Secondary Complilation Completed"
 
 .PHONY: clean
