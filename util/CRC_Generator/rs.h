@@ -7,7 +7,6 @@
 #define _RS_H
 
 #include <stdint.h>
-#include <string.h>
 
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
 
@@ -27,6 +26,9 @@ typedef uint32_t dword_t;
 #define BITS_PER_WORD		(sizeof(word_t) * 8)
 #define SYMBOL_TABLE_WORDS	(TOTAL_SYMBOL_COUNT * BITS_PER_SYMBOL / BITS_PER_WORD + 1)
 #define PARITY_SYMBOL_WORDS (PARITY_SYMBOL_COUNT * BITS_PER_SYMBOL / BITS_PER_WORD + 1)
+#define RS_PADDING 			1
+#define DATA_SYMBOL_WORDS	(DATA_SYMBOL_COUNT * BITS_PER_SYMBOL / BITS_PER_WORD)
+#define DATA_BUFFER_SIZE 	(DATA_SYMBOL_WORDS + RS_PADDING)
 
 #define FCS 1
 #define PRIM 1
@@ -61,9 +63,7 @@ inline static symbol_t __attribute__((no_instrument_function, always_inline)) mo
 
 
 /* General purpose RS codec, integer symbols */
-void encode_rs(symbol_t* data);
-int decode_rs(symbol_t* data);
-void init_rs(void);
+void encode_rs(symbol_t* data, symbol_t *parity);
 
 #ifndef _INIT_RS_C
 extern symbol_t alpha_to[SYMBOL_TABLE_WORDS]; /* log lookup table */

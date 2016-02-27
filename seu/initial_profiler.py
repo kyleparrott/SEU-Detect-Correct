@@ -29,8 +29,8 @@ sectionFormat = '''
     .text%s :
     {
         . = ALIGN(4);
-        *(.flash%shdr.FlashHeader%s);
-        *(.flash%sfunc.section%s_profile_func_enter);
+        *(.flash%shdr);
+        *(.flash%sfunc);
 %s
     } >flash%s
 '''
@@ -111,7 +111,7 @@ with open(linkScriptTemplate, 'r') as templateFile:
                 else:
                     functionSize = entry.length
                 if (runningSize + functionSize) >= linkScriptSectionArray[x].length:
-                    outputFile.write(sectionFormat % (sec_num, sec_num, sec_num, sec_num, sec_num, functionString, sec_num))
+                    outputFile.write(sectionFormat % (sec_num, sec_num, sec_num, functionString, sec_num))
                     x += 1
                     sec_num = linkScriptSectionArray[x].number
                     functionString = ''
@@ -119,7 +119,7 @@ with open(linkScriptTemplate, 'r') as templateFile:
                     functionSize = entry.length # Remove any padding, header is always aligned
                 functionString += functionEntryFormat % entry.name
                 runningSize += functionSize
-            outputFile.write(sectionFormat % (sec_num, sec_num, sec_num, sec_num, sec_num, functionString, sec_num))
+            outputFile.write(sectionFormat % (sec_num, sec_num, sec_num, functionString, sec_num))
 
             # for index in range(x + 1, len(linkScriptSectionArray)): #include the empty sections (if any) in the linkerscript
                     # outputFile.write(sectionFormat % (linkScriptSectionArray[index].number, linkScriptSectionArray[index].number, '', linkScriptSectionArray[index].number))
