@@ -20,27 +20,18 @@ MEMORY
 {
     sram (W!RX) : ORIGIN = 0x20000000, LENGTH = 192K
     CCMRAM (WRX) : ORIGIN = 0x60000000, LENGTH = 0K
-    flash0 (WRX) : ORIGIN = 0x08000000, LENGTH = 16K
+    WorkArea (WRX) : ORIGIN = 0x08000000, LENGTH = 16K
     flash1 (WRX) : ORIGIN = 0x08004000, LENGTH = 16K
     flash2 (WRX) : ORIGIN = 0x08008000, LENGTH = 16K
     flash3 (WRX) : ORIGIN = 0x0800C000, LENGTH = 16K
     flash4 (WRX) : ORIGIN = 0x08010000, LENGTH = 64K
-    flash5 (WRX) : ORIGIN = 0x08020000, LENGTH = 64K
-    flash6 (WRX) : ORIGIN = 0x08030000, LENGTH = 64K
-    flash7 (WRX) : ORIGIN = 0x08040000, LENGTH = 64K
-    flash8 (WRX) : ORIGIN = 0x08050000, LENGTH = 64K
-    flash9 (WRX) : ORIGIN = 0x08060000, LENGTH = 64K
-    flash10 (WRX) : ORIGIN = 0x08070000, LENGTH = 64K
-    flash11 (WRX) : ORIGIN = 0x08080000, LENGTH = 64K
-    flash12 (WRX) : ORIGIN = 0x08090000, LENGTH = 64K
-    flash13 (WRX) : ORIGIN = 0x080A0000, LENGTH = 64K
-    flash14 (WRX) : ORIGIN = 0x080B0000, LENGTH = 64K
-/* Sections 15 and 16 need to remain empty so reed solomon has someplace to work
-    flash15 (WRX) : ORIGIN = 0x080C0000, LENGTH = 64K
-    flash16 (WRX) : ORIGIN = 0x080D0000, LENGTH = 64K
- */
-    flash17 (WRX) : ORIGIN = 0x080E0000, LENGTH = 128K
-    /*   flash18 (WRX) : ORIGIN = 0x080F0000, LENGTH = 64K */
+    flash5 (WRX) : ORIGIN = 0x08020000, LENGTH = 128K
+    flash6 (WRX) : ORIGIN = 0x08030000, LENGTH = 128K
+    flash7 (WRX) : ORIGIN = 0x08040000, LENGTH = 128K
+    flash8 (WRX) : ORIGIN = 0x08050000, LENGTH = 128K
+    flash9 (WRX) : ORIGIN = 0x08060000, LENGTH = 128K
+    flash10 (WRX) : ORIGIN = 0x08070000, LENGTH = 128K
+    OddsAndEnds (WRX) : ORIGIN = 0x08080000, LENGTH = 128K
 }
 
 SECTIONS
