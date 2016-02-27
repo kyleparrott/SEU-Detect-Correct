@@ -1,80 +1,95 @@
 #ifndef _TRACE_FUNCTIONS_H
 #define _TRACE_FUNCTIONS_H
 
-#define BL_16K (1024 * 16)
-#define BL_64K (1024 * 64)
-
-/* NOTE: blockCRC MUST be the first member of this struct! */
-
-typedef struct block_header {
-    uint32_t blockCRC;					/*  4 bytes */
-    uint32_t block_length;				/*  4 bytes */
-	uint16_t reed_solomon_parity[32];   /* 64 bytes */
-} block_header_t;
-
-typedef uint32_t* uint32_ptr_t;
-
-typedef void (*profile_function_t)(block_header_t* blk_ptr, uint32_t* timestamp);
+#include <reed_solomon.h>
 
 #ifndef NULL
 #define NULL ((void*)0)
 #endif
 
-#define K_BYTES_IN_WORDS(x) ((x) * 256)
+#define PTR_TO_UINT(p) ((uint32_t)(p))
+#define UINT_TO_PTR(u) ((void*)(u))
+
+#define CRC_EXPIRE_TIME  42 /* how long between crc checks? */
 
 /* $$$ Replace this stub! */
-inline static uint32_t current_tick_count() {
+inline static uint32_t get_the_time() {
 	return 0;
 }
 
-inline static void __attribute__((no_instrument_function, always_inline))
-					profile_function(block_header_t* header_ptr, uint32_t* timestamp) {
-	uint32_t* wptr = (uint32_t*)header_ptr;
-	uint32_t idx;
+/***** Flash physical description ***************************/
 
-	if (*timestamp > current_tick_count()) {
-		return;
-	}
+#define SIZE_16K (1024 * 16)
+#define SIZE_64K (1024 * 64)
+#define SIZE_128K (1024 * 128)
 
-	/* CRC the block */
+typedef struct flash_section {
+	uint32_t*  base;
+	uint32_t size; /* In bytes */
+} flash_section_t;
+
+#define FLASH_SECTIONS  (10)
+#define FLASH_WORK_AREA UINT_TO_PTR(0x080C0000)
+#define WORK_AREA_SIZE	SIZE_128K
+
+/***** Flash logical block description ***************************/
+/* NOTE: blockCRC MUST be the first member of this struct! */
+
+typedef struct block_header {
+    uint32_t blockCRC;					/*  4 bytes */
+	uint16_t reed_solomon_parity[13];   /* 26 bytes */
+} block_header_t;
+
+/* These are in bytes (uint8_t) */
+#define USEABLE_FLASH_AREA  786432	/* (((uint32_t)&(((uint8_t*)FlashSections[FLASH_SECTIONS - 1].base)[FlashSections[FLASH_SECTIONS - 1].size)) - ((uint32_t)FlashSections[0].base)) */
+#define TOTAL_BLOCK_SIZE	13316	/* (sizeof(block_header_t) + DATA_SYMBOL_WORDS * sizeof(DATA_SYMBOL_WORDS)) */
+#define BLOCK_COUNT 		59		/* (USEABLE_FLASH_AREA / TOTAL_BLOCK_SIZE) */
+#define BLOCK_BASE			((block_header_t*)(FlashSections[0].base))
+
+/***** Profiler functions ***************************/
+
+#define PROFILE_FUNCTION_COUNT 4
+#define PROFILE_FUNCTION_MASK  ((1 << PROFILE_FUNCTION_COUNT) - 1)
+typedef void (*profile_function_t)(uint32_t block_number);
+
+inline static uint32_t __attribute__((no_instrument_function, always_inline)) crc_block(uint32_t* wptr) {
+	register uint32_t* endptr;
+	register uint32_t crc_value;
+
 	CRC->CR = CRC_CR_RESET;
-
-	for(idx = 1; idx < header_ptr->block_length; idx++)
+	endptr = (uint32_t*)&((block_header_t*)wptr)[1];
+	crc_value = *wptr++;
+	while(wptr < endptr)
 	{
-		CRC->DR = wptr[idx];
+		CRC->DR = *wptr++;
 	}
 
-	if (CRC->DR == header_ptr->blockCRC) {
+	return (CRC->DR == crc_value ? 1 : 0);
+}
+
+inline static void __attribute__((no_instrument_function, always_inline)) profile_function(uint32_t block_number, uint32_t tm_now) {
+
+	if (crc_expire_time[block_number] > tm_now) {
 		return;
 	}
 
+	crc_expire_time[block_number] = tm_now + CRC_EXPIRE_TIME;
+
+	if (crc_block(block_number)) {
+		return;
+	}
+
+
+	uint32_t* wptr = (uint32_t*)&BLOCK_BASE[block_number];
 /*	flash_copy_to_work(header_ptr, header_ptr->block_length);
 
 	rs_t rs = init_rs(int symsize, int gfpoly, int fcr, int prim, int nroots, int pad)
  */
 }
 
-
-/* ((volatile unsigned long *) 0xE0028000) */
-
-
-
-void __attribute__((no_instrument_function, section (".flash0func"))) section0_profile_func_enter(block_header_t* blk_ptr, uint32_t* timestamp);
-void __attribute__((no_instrument_function, section (".flash1func"))) section1_profile_func_enter(block_header_t* blk_ptr, uint32_t* timestamp);
-void __attribute__((no_instrument_function, section (".flash2func"))) section2_profile_func_enter(block_header_t* blk_ptr, uint32_t* timestamp);
-void __attribute__((no_instrument_function, section (".flash3func"))) section3_profile_func_enter(block_header_t* blk_ptr, uint32_t* timestamp);
-void __attribute__((no_instrument_function, section (".flash4func"))) section4_profile_func_enter(block_header_t* blk_ptr, uint32_t* timestamp);
-void __attribute__((no_instrument_function, section (".flash5func"))) section5_profile_func_enter(block_header_t* blk_ptr, uint32_t* timestamp);
-void __attribute__((no_instrument_function, section (".flash6func"))) section6_profile_func_enter(block_header_t* blk_ptr, uint32_t* timestamp);
-void __attribute__((no_instrument_function, section (".flash7func"))) section7_profile_func_enter(block_header_t* blk_ptr, uint32_t* timestamp);
-void __attribute__((no_instrument_function, section (".flash8func"))) section8_profile_func_enter(block_header_t* blk_ptr, uint32_t* timestamp);
-void __attribute__((no_instrument_function, section (".flash9func"))) section9_profile_func_enter(block_header_t* blk_ptr, uint32_t* timestamp);
-void __attribute__((no_instrument_function, section (".flash10func"))) section10_profile_func_enter(block_header_t* blk_ptr, uint32_t* timestamp);
-void __attribute__((no_instrument_function, section (".flash11func"))) section11_profile_func_enter(block_header_t* blk_ptr, uint32_t* timestamp);
-void __attribute__((no_instrument_function, section (".flash12func"))) section12_profile_func_enter(block_header_t* blk_ptr, uint32_t* timestamp);
-void __attribute__((no_instrument_function, section (".flash13func"))) section13_profile_func_enter(block_header_t* blk_ptr, uint32_t* timestamp);
-void __attribute__((no_instrument_function, section (".flash14func"))) section14_profile_func_enter(block_header_t* blk_ptr, uint32_t* timestamp);
-void __attribute__((no_instrument_function, section (".flash17func"))) section17_profile_func_enter(block_header_t* blk_ptr, uint32_t* timestamp);
-/* void __attribute__((no_instrument_function, section (".flash18func"))) section18_profile_func_enter(void); */
+void __attribute__((no_instrument_function, section (".block0func"))) section0_profile_func_enter(uint32_t block_number);
+void __attribute__((no_instrument_function, section (".block1func"))) section1_profile_func_enter(uint32_t block_number);
+void __attribute__((no_instrument_function, section (".block2func"))) section2_profile_func_enter(uint32_t block_number);
+void __attribute__((no_instrument_function, section (".block3func"))) section3_profile_func_enter(uint32_t block_number);
 
 #endif /* #define _TRACE_FUNCTIONS_H */
