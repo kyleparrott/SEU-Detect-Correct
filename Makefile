@@ -22,6 +22,8 @@ UTIL_DIR = $(CURDIR)/util
 CRC_SRC_DIR = $(UTIL_DIR)/CRC_Generator
 CRC_BUILD_DIR = $(BUILD_DIR)/crc_build
 
+NUM_TEXT_SECTIONS = 4 #Number of .textX sections declared in linker script
+
 INCLUDE=-I$(CURDIR)/hardware
 INCLUDE+=-I$(FREERTOS)/include
 INCLUDE+=-I$(FREERTOS)/portable/GCC/ARM_CM4F
@@ -104,7 +106,7 @@ PYTHON := python3
 
 OBJ = $(SRC:%.c=$(BUILD_DIR)/%.o)
 
-all: utils SECONDARY_COMPILATION
+all: utils SECONDARY_PROFILER
 
 utils:
 	@echo "[GCC] crcGenerator"
@@ -140,6 +142,15 @@ SECONDARY_COMPILATION: INITIAL_PROFILER
 	@echo "Starting Secondary Complilation"
 	@$(CC) -Wl,-Map,$(TARGET).map -o $(BIN_DIR)/final$(TARGET).elf $(SECONDARY_LINKERSCRIPT) $(LDFLAGS) $(OBJ) $(TRACE_OBJ) $(HEADER_OBJ) $(ASRC:%.s=$(BUILD_DIR)/%.o) $(LDLIBS)
 	@echo "Secondary Complilation Completed"
+
+SECONDARY_PROFILER: SECONDARY_COMPILATION 
+	@echo "generating hexDumps"
+	@x=1; while [[ $$x -le $(NUM_TEXT_SECTIONS)]] ; do \
+		$(READELF) -x .text$$x binary/final$(TARGET).elf | awk '{print $$2 " " $$3 " " $$4 " " $$5}' | tail -n+3 > $(SEU_GEN_DIR)/text_hex_dump_$$x.hex; \
+		((x = x + 1)); \
+	done
+	@echo "running Secondary/Final Profiler"
+	$(PYTHON) $(SEU_DIR)/secondary_profiler.py
 
 .PHONY: clean
 
