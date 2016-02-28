@@ -36,7 +36,7 @@ MEMORY
 
 SECTIONS
 {
-
+    /******/
     .text :
     {
         . = ALIGN(4);
@@ -59,7 +59,7 @@ SECTIONS
  	  	   _fini = . ;
 		   *(.fini)
 
-    } > flash17
+    } > flash10
 
     .data :
     {
