@@ -3,7 +3,7 @@ TARGET:=FreeRTOS
 ifeq (,$(TOOLCHAIN_ROOT))
 TOOLCHAIN_ROOT := /usr/lib
 endif
-TOOLCHAIN_ROOT := $(TOOLCHAIN_ROOT)
+TOOLCHAIN_ROOT := $(abspath $(TOOLCHAIN_ROOT))
 TOOLCHAIN_BIN := $(TOOLCHAIN_ROOT)/bin
 TOOLCHAIN_PREFIX := arm-none-eabi
 
@@ -12,15 +12,7 @@ DBG:=-g
 
 FREERTOS:=$(CURDIR)/FreeRTOS
 STARTUP:=$(CURDIR)/hardware
-
-BUILD_DIR = $(CURDIR)/build
-BIN_DIR = $(CURDIR)/binary
-SEU_DIR = $(CURDIR)/seu
-SEU_SRC_DIR = $(SEU_DIR)/src
-SEU_GEN_DIR = $(SEU_DIR)/gen
-UTIL_DIR = $(CURDIR)/util
-CRC_SRC_DIR = $(UTIL_DIR)/CRC_Generator
-CRC_BUILD_DIR = $(BUILD_DIR)/crc_build
+REED_SOLOMON:=$(abspath $(CURDIR)/../Reed-Solomon-Packed)
 
 INCLUDE=-I$(CURDIR)/hardware
 INCLUDE+=-I$(FREERTOS)/include
@@ -29,15 +21,22 @@ INCLUDE+=-I$(CURDIR)/Libraries/CMSIS/Device/ST/STM32F4xx/Include
 INCLUDE+=-I$(CURDIR)/Libraries/CMSIS/Include
 INCLUDE+=-I$(CURDIR)/Libraries/STM32F4xx_StdPeriph_Driver/inc
 INCLUDE+=-I$(CURDIR)/config
-INCLUDE+=-I$(SEU_DIR)/include
+INCLUDE+=-Iseu/include
+INCLUDE+=-I$(REED_SOLOMON)/include
+
+BUILD_DIR = $(CURDIR)/build
+BIN_DIR = $(CURDIR)/binary
+SEU_DIR = seu/
+SEU_SRC_DIR = $(SEU_DIR)/src
+SEU_GEN_DIR = $(SEU_DIR)/gen
 
 ASRC=startup_stm32f4xx.s
 
 vpath %.c $(CURDIR)/Libraries/STM32F4xx_StdPeriph_Driver/src \
 	  $(CURDIR)/Libraries/syscall $(CURDIR)/hardware $(FREERTOS) \
-	  $(FREERTOS)/portable/MemMang $(FREERTOS)/portable/GCC/ARM_CM4F \
-	  $(CRC_SRC_DIR) $(SEU_SRC_DIR)
+	  $(FREERTOS)/portable/MemMang $(FREERTOS)/portable/GCC/ARM_CM4F
 
+UNCHECKED_SRC := stm32f4xx_it.c #compiled without finstrument-function
 SRC+=system_stm32f4xx.c
 SRC+=main.c
 SRC+=syscalls.c
@@ -65,13 +64,7 @@ SRC+=stm32f4xx_tim.c
 SRC+=stm32f4xx_usart.c
 SRC+=stm32f4xx_rng.c
 
-CRC_SRC := $(CRC_SRC_DIR)/*.c
-CRC_SRC := $(filter-out trace_functions.c, $(CRC_SRC)) #trace_functions.c only used on the target, not in CRC_Generator
-TRACE_SRC = $(SEU_SRC_DIR)/trace_functions.c
-TRACE_OBJ = $(BUILD_DIR)/trace_functions.o
-
-UNCHECKED_SRC := $(STARTUP)/stm32f4xx_it.c #compiled without finstrument-function
-UNCHECKED_OBJ = $(BUILD_DIR)/stm32f4xx_it.o
+CRC_SRCS = util/CRC_Generator/crcmodel.c util/CRC_Generator/main.c
 
 CDEFS=-DUSE_STDPERIPH_DRIVER
 CDEFS+=-DSTM32F4XX
@@ -87,8 +80,11 @@ LDLIBS=$(TOOLCHAIN_ROOT)/arm-none-eabi/lib/armv7e-m/fpu/libc.a $(TOOLCHAIN_ROOT)
 LDFLAGS=$(COMMONFLAGS) -fno-exceptions -nostartfiles
 SEUFLAG=-finstrument-functions
 
-INITIAL_LINKERSCRIPT=-T$(SEU_DIR)/initial_seu_link.ld
-SECONDARY_LINKERSCRIPT=-T$(SEU_GEN_DIR)/secondary_seu_link.ld
+INITIAL_LINKERSCRIPT=-Tseu/initial_seu_link.ld
+SECONDARY_LINKERSCRIPT=-Tseu/gen/secondary_seu_link.ld
+# TRACE_FILES = seu/src/trace_functions.c seu/src/alpha_to.c seu/src/decode_rs.c seu/src/genpoly.c src/index_of.c
+TRACE_FILES = seu/src/trace_functions.c
+TRACE_OBJ = build/trace_functions.o
 
 # don't count on having the tools in the PATH...
 CC := $(TOOLCHAIN_BIN)/$(TOOLCHAIN_PREFIX)-gcc
@@ -99,33 +95,48 @@ AR := $(TOOLCHAIN_BIN)/$(TOOLCHAIN_PREFIX)-ar
 GDB := $(TOOLCHAIN_BIN)/$(TOOLCHAIN_PREFIX)-gdb
 READELF := $(TOOLCHAIN_BIN)/$(TOOLCHAIN_PREFIX)-readelf
 
-GCC := gcc #Standard Desktop GCC
-PYTHON := python3
+GCC=gcc #Standard Desktop GCC
+
+PYTHON = python3
 
 OBJ = $(SRC:%.c=$(BUILD_DIR)/%.o)
 
 all: utils SECONDARY_COMPILATION
 
 utils:
-	@echo "[GCC] crcGenerator"
+	@echo [CC] crcGenerator.c
 	@test -d $(BUILD_DIR) || mkdir -p $(BUILD_DIR)
-	@$(GCC) $(INCLUDE) $(CRC_SRC) -o $(BUILD_DIR)/crcGenerator
+	@$(GCC) $(CRC_SRCS) -I$(REED_SOLOMON)/include -o $(BUILD_DIR)/crcGenerator
+
+REED_SOLOMON_OBJS: $(BUILD_DIR)/alpha_to.o $(BUILD_DIR)/index_of.o $(BUILD_DIR)/genpoly.o
+
+$(BUILD_DIR)/alpha_to.o: $(REED_SOLOMON)/src/alpha_to.c $(REED_SOLOMON)/include/*
+	@echo [CC] $(notdir $<)
+	@$(CC) $(CFLAGS) $< -c -o $@
+
+$(BUILD_DIR)/index_of.o: $(REED_SOLOMON)/src/index_of.c $(REED_SOLOMON)/include/*
+	@echo [CC] $(notdir $<)
+	@$(CC) $(CFLAGS) $< -c -o $@
+
+$(BUILD_DIR)/genpoly.o: $(REED_SOLOMON)/src/genpoly.c $(REED_SOLOMON)/include/*
+	@echo [CC] $(notdir $<)
+	@$(CC) $(CFLAGS) $< -c -o $@
 
 $(BUILD_DIR)/%.o: %.c
 	@echo [CC] $(notdir $<)
 	@test -d $(BUILD_DIR) || mkdir -p $(BUILD_DIR)
 	@$(CC) $(CFLAGS) $(SEUFLAG) $< -c -o $@
 
-UNCHECKED_OBJS: $(OBJ) 
-	@$(CC) $(CFLAGS) $(INCLUDE) $(UNCHECKED_SRC) -c -o $(UNCHECKED_OBJ)
-	@$(CC) $(CFLAGS) $(TRACE_SRC) -c -o $(TRACE_OBJ)
+UNCHECKED_OBJS: $(OBJ)
+	@$(CC) $(CFLAGS) hardware/stm32f4xx_it.c -c -o build/stm32f4xx_it.o
+	@$(CC) $(CFLAGS) $(TRACE_FILES) -c -o $(TRACE_OBJ)
 
-INITIAL_COMPILATION: UNCHECKED_OBJS
+INITIAL_COMPILATION: UNCHECKED_OBJS REED_SOLOMON_OBJS
 	@echo "[AS] $(ASRC)"
 	@$(AS) -o $(ASRC:%.s=$(BUILD_DIR)/%.o) $(STARTUP)/$(ASRC)
 	@echo [LD] $(TARGET).elf
 	@test -d $(BIN_DIR) || mkdir -p $(BIN_DIR)
-	@$(CC) -o $(BIN_DIR)/initial$(TARGET).elf $(INITIAL_LINKERSCRIPT) $(LDFLAGS) $(OBJ) $(TRACE_OBJ) $(ASRC:%.s=$(BUILD_DIR)/%.o) $(LDLIBS)
+	@$(CC) -o $(BIN_DIR)/initial$(TARGET).elf $(INITIAL_LINKERSCRIPT) $(LDFLAGS) $(OBJ) $REED_SOLOMON_OBJS) $(TRACE_OBJ) $(ASRC:%.s=$(BUILD_DIR)/%.o) $(LDLIBS)
 
 INITIAL_PROFILER: INITIAL_COMPILATION
 	@echo "Starting Initial Profiler"
