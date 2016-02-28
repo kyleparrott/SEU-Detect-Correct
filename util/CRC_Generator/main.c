@@ -19,7 +19,7 @@
 #include <stdint.h>
 #include <string.h>
 #include "crcmodel.h"
-#include "rs.h"
+#include <reed_solomon.h>
 
 static uint32_t CRC_CalcBlockCRC(uint32_t *buffer, uint32_t words);
 
