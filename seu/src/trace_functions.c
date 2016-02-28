@@ -20,12 +20,33 @@
 
 uint32_t crc_expire_times[BLOCK_COUNT];
 
-profile_function_t* profile_functions[]
+const flash_section_t FlashSections[FLASH_SECTIONS] = {
+/* The 16K section at 0x08000000 is our work area in case of fixup */
+    { ((uint32_t)FLASH_BASE), SIZE_16K },
+    { ((uint32_t)0x08004000), SIZE_16K },
+    { ((uint32_t)0x08008000), SIZE_16K },
+    { ((uint32_t)0x0800C000), SIZE_16K },
+    { ((uint32_t)0x08010000), SIZE_64K },
+    { ((uint32_t)0x08020000), SIZE_128K },
+    { ((uint32_t)0x08040000), SIZE_128K },
+    { ((uint32_t)0x08060000), SIZE_128K },
+    { ((uint32_t)0x08080000), SIZE_128K },
+    { ((uint32_t)0x080A0000), SIZE_128K }
+/* The 128K section at 0x080C0000 is reserved for a work area for the flash copy functions */
+/* The 128K section at 0x080E0000 is reserved for .bss and other misc unprotected sections */
+ };
+
+const profile_function_t profile_functions[4] = {
+	(profile_function_t) section0_profile_func_enter,
+	(profile_function_t) section1_profile_func_enter,
+	(profile_function_t) section2_profile_func_enter,
+	(profile_function_t) section3_profile_func_enter
+};
 
 void __cyg_profile_func_enter (void* this_func, void* caller) {
 	register uint32_t block_number = ((PTR_TO_UINT(caller) - BLOCK_BASE) / TOTAL_BLOCK_SIZE);
 
-	*profile_functions[block_number & PROFILE_FUNCTION_MASK](block_number, get_the_time());
+	*(profile_functions[block_number & PROFILE_FUNCTION_MASK])(block_number);
 }
 
 /**************************************************************************/
@@ -36,64 +57,63 @@ void __cyg_profile_func_exit(void *func, void *caller) {
 
 /**************************************************************************/
 
-void __attribute__((no_instrument_function, section (".block0func"))) section0_profile_func_enter(uint32_t block_number, uint32_t tm_now) {
-	if (crc_chk(0, tm_now) != 0)
+static void __attribute__((no_instrument_function, section (".block0func"))) section0_profile_func_enter(uint32_t block_number) {
+
+	if (crc_chk(0, get_the_time()) != 0)
 	{
 		/* If this section doesn't pass crc_check(), use the next section to fix this one. */
-		section1_profile_func_enter(0, tm_now);
+		section1_profile_func_enter(0);
 	}
-	if (crc_chk(block_number, tm_now) != 0)
-	{
-		fix_block0(block_number);
-	}
-}
 
-void __attribute__((no_instrument_function, section (".block0func"))) profile_function0(uint32_t block_number) {
-	profile_function(block_number);
+	if (crc_chk(block_number, get_the_time()) != 0)
+	{
+		fix_block(block_number);
+	}
 }
 
 /**************************************************************************/
 
-void __attribute__((no_instrument_function, section (".block1func"))) section1_profile_func_enter(uint32_t block_number, uint32_t tm_now) {
-	register uint32_t tm_now = get_the_time()
-	if (crc_chk(1, tm_now) != 0)
-	{
-		profile_function2(1);
-	}
-	profile_function1(block_number);
-}
+static void __attribute__((no_instrument_function, section (".block1func"))) section1_profile_func_enter(uint32_t block_number) {
 
-void __attribute__((no_instrument_function, section (".block1func"))) profile_function1(uint32_t block_number) {
-	profile_function(block_number);
+	if (crc_chk(1, get_the_time()) != 0)
+	{
+		section2_profile_func_enter(1);
+	}
+
+	if (crc_chk(block_number, get_the_time()) != 0)
+	{
+		fix_block(block_number);
+	}
 }
 
 /**************************************************************************/
 
-void __attribute__((no_instrument_function, section (".block2func"))) section2_profile_func_enter(uint32_t block_number, uint32_t tm_now) {
-	if (crc_chk(2, tm_now) != 0)
-	{
-		profile_function3(2);
-	}
-	profile_function2(block_number);
-}
+static void __attribute__((no_instrument_function, section (".block2func"))) section2_profile_func_enter(uint32_t block_number) {
 
-void __attribute__((no_instrument_function, section (".block2func"))) profile_function2(uint32_t block_number) {
-	profile_function(block_number);
+	if (crc_chk(2, get_the_time()) != 0)
+	{
+		section3_profile_func_enter(2);
+	}
+
+	if (crc_chk(block_number, get_the_time()) != 0)
+	{
+		fix_block(block_number);
+	}
 }
 
 /**************************************************************************/
 
-void __attribute__((no_instrument_function, section (".block3func"))) section3_profile_func_enter(uint32_t block_number, uint32_t tm_now) {
-	register uint32_t tm_now = get_the_time()
-	if (crc_chk(3, tm_now) != 0)
-	{
-		profile_function0(3);
-	}
-	profile_function3(block_number);
-}
+static void __attribute__((no_instrument_function, section (".block3func"))) section3_profile_func_enter(uint32_t block_number) {
 
-void __attribute__((no_instrument_function, section (".block3func"))) profile_function3(uint32_t block_number) {
-	profile_function(block_number);
+	if (crc_chk(3, get_the_time()) != 0)
+	{
+		section0_profile_func_enter(3);
+	}
+
+	if (crc_chk(block_number, get_the_time()) != 0)
+	{
+		fix_block(block_number);
+	}
 }
 
 
