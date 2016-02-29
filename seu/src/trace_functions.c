@@ -44,9 +44,9 @@ const profile_function_t profile_functions[4] = {
 };
 
 void __cyg_profile_func_enter (void* this_func, void* caller) {
-	register uint32_t block_number = ((PTR_TO_UINT(caller) - BLOCK_BASE) / TOTAL_BLOCK_SIZE);
+	register uint32_t block_number = (PTR_TO_UINT(caller) - BLOCK_BASE) / TOTAL_BLOCK_SIZE;
 
-	*(profile_functions[block_number & PROFILE_FUNCTION_MASK])(block_number);
+	profile_functions[block_number & PROFILE_FUNCTION_MASK](block_number);
 }
 
 /**************************************************************************/
@@ -57,15 +57,15 @@ void __cyg_profile_func_exit(void *func, void *caller) {
 
 /**************************************************************************/
 
-static void __attribute__((no_instrument_function, section (".block0func"))) section0_profile_func_enter(uint32_t block_number) {
+void __attribute__((no_instrument_function, section (".block0func"))) section0_profile_func_enter(uint32_t block_number) {
 
-	if (crc_chk(0, get_the_time()) != 0)
+	if (crc_check(0, get_the_time()) != 0)
 	{
-		/* If this section doesn't pass crc_check(), use the next section to fix this one. */
+		/* If this section doesn't pass (), use the next section to fix this one. */
 		section1_profile_func_enter(0);
 	}
 
-	if (crc_chk(block_number, get_the_time()) != 0)
+	if (crc_check(block_number, get_the_time()) != 0)
 	{
 		fix_block(block_number);
 	}
@@ -73,14 +73,14 @@ static void __attribute__((no_instrument_function, section (".block0func"))) sec
 
 /**************************************************************************/
 
-static void __attribute__((no_instrument_function, section (".block1func"))) section1_profile_func_enter(uint32_t block_number) {
+void __attribute__((no_instrument_function, section (".block1func"))) section1_profile_func_enter(uint32_t block_number) {
 
-	if (crc_chk(1, get_the_time()) != 0)
+	if (crc_check(1, get_the_time()) != 0)
 	{
 		section2_profile_func_enter(1);
 	}
 
-	if (crc_chk(block_number, get_the_time()) != 0)
+	if (crc_check(block_number, get_the_time()) != 0)
 	{
 		fix_block(block_number);
 	}
@@ -88,14 +88,14 @@ static void __attribute__((no_instrument_function, section (".block1func"))) sec
 
 /**************************************************************************/
 
-static void __attribute__((no_instrument_function, section (".block2func"))) section2_profile_func_enter(uint32_t block_number) {
+void __attribute__((no_instrument_function, section (".block2func"))) section2_profile_func_enter(uint32_t block_number) {
 
-	if (crc_chk(2, get_the_time()) != 0)
+	if (crc_check(2, get_the_time()) != 0)
 	{
 		section3_profile_func_enter(2);
 	}
 
-	if (crc_chk(block_number, get_the_time()) != 0)
+	if (crc_check(block_number, get_the_time()) != 0)
 	{
 		fix_block(block_number);
 	}
@@ -103,14 +103,14 @@ static void __attribute__((no_instrument_function, section (".block2func"))) sec
 
 /**************************************************************************/
 
-static void __attribute__((no_instrument_function, section (".block3func"))) section3_profile_func_enter(uint32_t block_number) {
+void __attribute__((no_instrument_function, section (".block3func"))) section3_profile_func_enter(uint32_t block_number) {
 
-	if (crc_chk(3, get_the_time()) != 0)
+	if (crc_check(3, get_the_time()) != 0)
 	{
 		section0_profile_func_enter(3);
 	}
 
-	if (crc_chk(block_number, get_the_time()) != 0)
+	if (crc_check(block_number, get_the_time()) != 0)
 	{
 		fix_block(block_number);
 	}
