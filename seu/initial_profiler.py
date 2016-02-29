@@ -20,21 +20,23 @@
 import re
 import os
 
-linkScriptTemplate = os.path.join('seu', 'initial_seu_link.ld')
+headLinkScriptTemplate = os.path.join('seu', 'gen', 'template_half_0.ld')
+tailLinkScriptTemplate = os.path.join('seu', 'gen', 'template_half_1.ld')
 generatedLinkerScript = os.path.join('seu', 'gen', 'secondary_seu_link.ld')
 elfInput = os.path.join('seu', 'gen', 'readElf.data')
 functionMap = os.path.join('seu', 'gen', 'fullMap.data')
+
+
 
 sectionFormat = '''
     .text%s :
     {
         . = ALIGN(4);
-        *(.flash%shdr);
-        *(.flash%sfunc);
+        *(.block%shdr);
+        *(.block%sfunc);
 %s
     } >flash%s
 '''
-
 
 functionEntryFormat = '        *(.text.%s)\n'
 
@@ -90,41 +92,48 @@ with open(functionMap, 'r') as functionFile:
         functionData = line.split()
         functionDataArray.append(FunctionDataObj(functionData[1], functionData[0]))
 
+headData = ''
+with open (headLinkScriptTemplate, 'r') as headTemplateFile:
+    for line in headTemplateFile:
+        headData += line
+
+tailData = ''
+with open (tailLinkScriptTemplate, 'r') as tailTemplateFile:
+    for line in tailTemplateFile:
+        tailData += line
+
 # Write linkerscript to file
-with open(linkScriptTemplate, 'r') as templateFile:
-        headerTemplateData = [next(templateFile) for n in range(47)] #fixed file lengths
-        tailTemplateData = [next(templateFile) for n in range(68)]
-        with open(generatedLinkerScript, 'w') as outputFile:
-            x = 0
-            for line in headerTemplateData: #write first half of linker script
-                outputFile.write('%s' % line)
+with open(generatedLinkerScript, 'w') as outputFile:
+    x = 0
+    for line in headData: #write first half of linker script
+        outputFile.write('%s' % line)
 
-            x = 0 # Current linker script section
-            sec_num = linkScriptSectionArray[x].number
-            functionString = '' # contents of the current LS section
-            runningSize = HEADERSIZE #Running total size of functions placed in current section
-            for entry in functionDataArray:        #write individual functions to linker script
-                # Pad to .ALIGN(4) and add function length
-                bytesOverAlignment = runningSize % WORDSIZE
-                if (bytesOverAlignment > 0):
-                    functionSize = WORDSIZE - bytesOverAlignment + entry.length
-                else:
-                    functionSize = entry.length
-                if (runningSize + functionSize) >= linkScriptSectionArray[x].length:
-                    outputFile.write(sectionFormat % (sec_num, sec_num, sec_num, functionString, sec_num))
-                    x += 1
-                    sec_num = linkScriptSectionArray[x].number
-                    functionString = ''
-                    runningSize = HEADERSIZE
-                    functionSize = entry.length # Remove any padding, header is always aligned
-                functionString += functionEntryFormat % entry.name
-                runningSize += functionSize
+    x = 0 # Current linker script section
+    sec_num = linkScriptSectionArray[x].number
+    functionString = '' # contents of the current LS section
+    runningSize = HEADERSIZE #Running total size of functions placed in current section
+    for entry in functionDataArray:        #write individual functions to linker script
+        # Pad to .ALIGN(4) and add function length
+        bytesOverAlignment = runningSize % WORDSIZE
+        if (bytesOverAlignment > 0):
+            functionSize = WORDSIZE - bytesOverAlignment + entry.length
+        else:
+            functionSize = entry.length
+        if (runningSize + functionSize) >= linkScriptSectionArray[x].length:
             outputFile.write(sectionFormat % (sec_num, sec_num, sec_num, functionString, sec_num))
+            x += 1
+            sec_num = linkScriptSectionArray[x].number
+            functionString = ''
+            runningSize = HEADERSIZE
+            functionSize = entry.length # Remove any padding, header is always aligned
+        functionString += functionEntryFormat % entry.name
+        runningSize += functionSize
+    outputFile.write(sectionFormat % (sec_num, sec_num, sec_num, functionString, sec_num))
 
-            # for index in range(x + 1, len(linkScriptSectionArray)): #include the empty sections (if any) in the linkerscript
-                    # outputFile.write(sectionFormat % (linkScriptSectionArray[index].number, linkScriptSectionArray[index].number, '', linkScriptSectionArray[index].number))
+    # for index in range(x + 1, len(linkScriptSectionArray)): #include the empty sections (if any) in the linkerscript
+            # outputFile.write(sectionFormat % (linkScriptSectionArray[index].number, linkScriptSectionArray[index].number, '', linkScriptSectionArray[index].number))
 
-            for line in tailTemplateData:    #write second half of linkerscript
-                outputFile.write('%s' % line)
+    for line in tailData:    #write second half of linkerscript
+        outputFile.write('%s' % line)
 
 print ('successfully generated linker script')

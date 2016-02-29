@@ -14,6 +14,8 @@ FREERTOS:=$(CURDIR)/FreeRTOS
 STARTUP:=$(CURDIR)/hardware
 REED_SOLOMON:=$(abspath $(CURDIR)/../Reed-Solomon-Packed)
 
+NUM_TEXT_SECTIONS = 4 #Number of .textX sections declared in linker script
+
 INCLUDE=-I$(CURDIR)/hardware
 INCLUDE+=-I$(FREERTOS)/include
 INCLUDE+=-I$(FREERTOS)/portable/GCC/ARM_CM4F
@@ -101,7 +103,7 @@ PYTHON = python3
 
 OBJ = $(SRC:%.c=$(BUILD_DIR)/%.o)
 
-all: utils SECONDARY_COMPILATION
+all: utils SECONDARY_PROFILER
 
 utils:
 	@echo [CC] crcGenerator.c
@@ -138,17 +140,28 @@ INITIAL_COMPILATION: UNCHECKED_OBJS REED_SOLOMON_OBJS
 	@test -d $(BIN_DIR) || mkdir -p $(BIN_DIR)
 	@$(CC) -o $(BIN_DIR)/initial$(TARGET).elf $(INITIAL_LINKERSCRIPT) $(LDFLAGS) $(OBJ) $REED_SOLOMON_OBJS) $(TRACE_OBJ) $(ASRC:%.s=$(BUILD_DIR)/%.o) $(LDLIBS)
 
+
 INITIAL_PROFILER: INITIAL_COMPILATION
 	@echo "Starting Initial Profiler"
-	@test -d seu/gen || mkdir -p seu/gen
+	@test -d $(SEU_GEN_DIR) || mkdir -p $(SEU_GEN_DIR)
 	@$(READELF) --wide -s binary/initialFreeRTOS.elf| grep " FUNC    " | awk '{print $$3 " " $$8 }' | sort -k 2 | uniq -u  > seu/gen/fullMap.data
-	@$(PYTHON) seu/initial_profiler.py
+	@awk '/\*{6}/{x++}{print >"seu/gen/template_half_" x ".ld" }' x=0 seu/initial_seu_link.ld #Split Linker script in half 
+	@$(PYTHON) $(SEU_DIR)/initial_profiler.py
 	@echo "initial Profiler Completed"
 
 SECONDARY_COMPILATION: INITIAL_PROFILER
 	@echo "Starting Secondary Complilation"
 	@$(CC) -Wl,-Map,$(TARGET).map -o $(BIN_DIR)/final$(TARGET).elf $(SECONDARY_LINKERSCRIPT) $(LDFLAGS) $(OBJ) $(TRACE_OBJ) $(HEADER_OBJ) $(ASRC:%.s=$(BUILD_DIR)/%.o) $(LDLIBS)
 	@echo "Secondary Complilation Completed"
+
+SECONDARY_PROFILER: SECONDARY_COMPILATION 
+	@echo "generating hexDumps"
+	@x=1; while [[ $$x -le $(NUM_TEXT_SECTIONS)]] ; do \
+		$(READELF) -x .text$$x binary/final$(TARGET).elf | awk '{print $$2 " " $$3 " " $$4 " " $$5}' | tail -n+3 > $(SEU_GEN_DIR)/text_hex_dump_$$x.hex; \
+		((x = x + 1)); \
+	done
+	@echo "running Secondary/Final Profiler"
+	$(PYTHON) $(SEU_DIR)/secondary_profiler.py
 
 .PHONY: clean
 
