@@ -8,7 +8,8 @@ TOOLCHAIN_BIN := $(TOOLCHAIN_ROOT)/bin
 TOOLCHAIN_PREFIX := arm-none-eabi
 
 OPTLVL:=0
-DBG:=-g
+#DBG:=-g
+DBG:=
 
 FREERTOS:=$(CURDIR)/FreeRTOS
 STARTUP:=$(CURDIR)/hardware
