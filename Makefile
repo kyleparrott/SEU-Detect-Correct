@@ -8,7 +8,8 @@ TOOLCHAIN_BIN := $(TOOLCHAIN_ROOT)/bin
 TOOLCHAIN_PREFIX := arm-none-eabi
 
 OPTLVL:=0
-DBG:=-g
+#DBG:=-g
+DBG:=
 
 FREERTOS:=$(CURDIR)/FreeRTOS
 STARTUP:=$(CURDIR)/hardware
@@ -116,7 +117,6 @@ utils:
 
 REED_SOLOMON_OBJS: $(REED_SOLOMON_OBJ)
 
->>>>>>> a08dd93d235cdd5769c3e657d0c5948867b36302
 $(BUILD_DIR)/alpha_to.o: $(REED_SOLOMON)/src/alpha_to.c $(REED_SOLOMON)/include/*
 	@echo [CC] $(notdir $<)
 	@$(CC) $(CFLAGS) $< -c -o $@
@@ -143,11 +143,7 @@ INITIAL_COMPILATION: UNCHECKED_OBJS $(REED_SOLOMON_OBJS)
 	@$(AS) -o $(ASRC:%.s=$(BUILD_DIR)/%.o) $(STARTUP)/$(ASRC)
 	@echo [LD] $(TARGET).elf
 	@test -d $(BIN_DIR) || mkdir -p $(BIN_DIR)
-<<<<<<< HEAD
 	@$(CC) -o $(BIN_DIR)/initial$(TARGET).elf $(INITIAL_LINKERSCRIPT) $(LDFLAGS) $(OBJ) $(REED_SOLOMON_OBJS) $(TRACE_OBJ) $(ASRC:%.s=$(BUILD_DIR)/%.o) $(LDLIBS)
-=======
->>>>>>> a08dd93d235cdd5769c3e657d0c5948867b36302
-
 
 INITIAL_PROFILER: INITIAL_COMPILATION
 	@echo "Starting Initial Profiler"

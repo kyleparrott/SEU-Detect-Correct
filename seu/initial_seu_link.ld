@@ -32,10 +32,10 @@ SECTIONS
         PROVIDE(stext = .);
 		work_area = .;
  		. = (work_area + 16K);
-		block_count = .;
-		LONG((block_end - block_base) / 13312);
 		block_base = .;
 /****** Block 0 ******/
+		block_count = .;
+		LONG((block_end - block_base) / 13312);
     /*------*/
         . = ALIGN(4);
 		block_end = .;

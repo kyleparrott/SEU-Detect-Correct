@@ -103,7 +103,7 @@ with open(generatedLinkerScript, 'w') as outputFile:
     outputFile.write(functionEntryFormat % s1.name)
     if s1.align > 0:
         outputFile.write(functionPadFormat % s1.align)
-    bytesAvailable = PAYLOADSIZE - s1.bytes
+    bytesAvailable = PAYLOADSIZE - 4 - s1.bytes # block[0] contains the block count which is 4 bytes long
 
     while len(functionDataArray) > 0:
         idx = getBiggestFunction(bytesAvailable, functionDataArray)
