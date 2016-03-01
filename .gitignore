@@ -32,6 +32,7 @@
 
 # Debug files
 *.dSYM/
+*.map
 
 # Compile Folders
 bin/
