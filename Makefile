@@ -114,8 +114,6 @@ utils:
 	@test -d $(BUILD_DIR) || mkdir -p $(BUILD_DIR)
 	$(GCC) $(CRC_SRCS) $(REED_SOLOMON_SRC) $(INCLUDE) -I$(REED_SOLOMON)/include $(DBG) -o $(BUILD_DIR)/crcGenerator
 
-<<<<<<< HEAD
-=======
 REED_SOLOMON_OBJS: $(REED_SOLOMON_OBJ)
 
 >>>>>>> a08dd93d235cdd5769c3e657d0c5948867b36302
