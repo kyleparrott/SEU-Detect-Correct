@@ -18,35 +18,23 @@
 #include <stm32f4xx.h>
 #include <trace_functions.h>
 
-uint32_t crc_expire_times[BLOCK_COUNT];
-
-const flash_section_t FlashSections[FLASH_SECTIONS] = {
-/* The 16K section at 0x08000000 is our work area in case of fixup */
-    { ((uint32_t)FLASH_BASE), SIZE_16K },
-    { ((uint32_t)0x08004000), SIZE_16K },
-    { ((uint32_t)0x08008000), SIZE_16K },
-    { ((uint32_t)0x0800C000), SIZE_16K },
-    { ((uint32_t)0x08010000), SIZE_64K },
-    { ((uint32_t)0x08020000), SIZE_128K },
-    { ((uint32_t)0x08040000), SIZE_128K },
-    { ((uint32_t)0x08060000), SIZE_128K },
-    { ((uint32_t)0x08080000), SIZE_128K },
-    { ((uint32_t)0x080A0000), SIZE_128K }
-/* The 128K section at 0x080C0000 is reserved for a work area for the flash copy functions */
-/* The 128K section at 0x080E0000 is reserved for .bss and other misc unprotected sections */
- };
-
-const profile_function_t profile_functions[4] = {
-	(profile_function_t) section0_profile_func_enter,
-	(profile_function_t) section1_profile_func_enter,
-	(profile_function_t) section2_profile_func_enter,
-	(profile_function_t) section3_profile_func_enter
+const uint32_t FlashSections[FLASH_SECTIONS] = {
+    PTR_TO_UINT(FLASH_BASE),	/* This is the work area for fixups */
+    PTR_TO_UINT(FLASH_BASE) + K(16),
+    PTR_TO_UINT(FLASH_BASE) + K(32),
+    PTR_TO_UINT(FLASH_BASE) + K(48),
+    PTR_TO_UINT(FLASH_BASE) + K(64),
+    PTR_TO_UINT(FLASH_BASE) + K(128),
+    PTR_TO_UINT(FLASH_BASE) + K(256),
+    PTR_TO_UINT(FLASH_BASE) + K(384),
+    PTR_TO_UINT(FLASH_BASE) + K(512),
+    PTR_TO_UINT(FLASH_BASE) + K(640),
+    PTR_TO_UINT(FLASH_BASE) + K(768),
+    PTR_TO_UINT(FLASH_BASE) + K(896)
 };
 
 void __cyg_profile_func_enter (void* this_func, void* caller) {
-	register uint32_t block_number = (PTR_TO_UINT(caller) - BLOCK_BASE) / TOTAL_BLOCK_SIZE;
-
-	profile_functions[block_number & PROFILE_FUNCTION_MASK](block_number);
+	section1_profile_func_enter((PTR_TO_UINT(caller) - PTR_TO_UINT(BLOCK_BASE)) / sizeof(block_t));
 }
 
 /**************************************************************************/
@@ -57,62 +45,68 @@ void __cyg_profile_func_exit(void *func, void *caller) {
 
 /**************************************************************************/
 
-void __attribute__((no_instrument_function, section (".block0func"))) section0_profile_func_enter(uint32_t block_number) {
+static void __attribute__((no_instrument_function)) section1_profile_func_enter(uint32_t block_number) {
 
-	if (crc_check(0, get_the_time()) != 0)
+	if (crc_check(BLOCK_IN_FLASH1, get_the_time()) != 0)
 	{
-		/* If this section doesn't pass (), use the next section to fix this one. */
-		section1_profile_func_enter(0);
+		/* If this section doesn't pass crc_check(), use the next section to fix this one. */
+		section1_profile_func_enter(block_number);
 	}
 
 	if (crc_check(block_number, get_the_time()) != 0)
 	{
-		fix_block(block_number);
+		/* Can't fix a block in the same physical flash section as this function */
+		if (data_block_is_in_flash_section(block_number, 1)) {
+			section2_profile_func_enter(block_number);
+		}
+		else {
+			fix_block(block_number);
+		}
 	}
 }
 
 /**************************************************************************/
 
-void __attribute__((no_instrument_function, section (".block1func"))) section1_profile_func_enter(uint32_t block_number) {
+static void __attribute__((no_instrument_function)) section2_profile_func_enter(uint32_t block_number) {
 
-	if (crc_check(1, get_the_time()) != 0)
+	if (crc_check(BLOCK_IN_FLASH2, get_the_time()) != 0)
 	{
-		section2_profile_func_enter(1);
+		/* If this section doesn't pass crc_check(), use the next section to fix this one. */
+		section3_profile_func_enter(BLOCK_IN_FLASH2);
 	}
 
 	if (crc_check(block_number, get_the_time()) != 0)
 	{
-		fix_block(block_number);
+		/* Can't fix a block in the same physical flash section as this function */
+		if (data_block_is_in_flash_section(block_number, 2)) {
+			section3_profile_func_enter(block_number);
+		}
+		else {
+			fix_block(block_number);
+		}
 	}
 }
 
 /**************************************************************************/
 
-void __attribute__((no_instrument_function, section (".block2func"))) section2_profile_func_enter(uint32_t block_number) {
+static void __attribute__((no_instrument_function)) section3_profile_func_enter(uint32_t block_number) {
 
-	if (crc_check(2, get_the_time()) != 0)
+	if (crc_check(BLOCK_IN_FLASH3, get_the_time()) != 0)
 	{
-		section3_profile_func_enter(2);
+		/* If this section doesn't pass crc_check(), use the next section to fix this one. */
+		section3_profile_func_enter(BLOCK_IN_FLASH3);
 	}
 
 	if (crc_check(block_number, get_the_time()) != 0)
 	{
-		fix_block(block_number);
-	}
-}
-
-/**************************************************************************/
-
-void __attribute__((no_instrument_function, section (".block3func"))) section3_profile_func_enter(uint32_t block_number) {
-
-	if (crc_check(3, get_the_time()) != 0)
-	{
-		section0_profile_func_enter(3);
-	}
-
-	if (crc_check(block_number, get_the_time()) != 0)
-	{
-		fix_block(block_number);
+		/* Can't fix a block in the same physical flash section as this function */
+		if (data_block_is_in_flash_section(block_number, 3)) {
+			/* Silently drift, alone in the cold vacuum of space forever and ever... */
+			infinity: goto infinity;
+		}
+		else {
+			fix_block(block_number);
+		}
 	}
 }
 

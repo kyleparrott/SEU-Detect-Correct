@@ -84,9 +84,11 @@ SEUFLAG=-finstrument-functions
 
 INITIAL_LINKERSCRIPT=-Tseu/initial_seu_link.ld
 SECONDARY_LINKERSCRIPT=-Tseu/gen/secondary_seu_link.ld
-# TRACE_FILES = seu/src/trace_functions.c seu/src/alpha_to.c seu/src/decode_rs.c seu/src/genpoly.c src/index_of.c
+
 TRACE_FILES = seu/src/trace_functions.c
 TRACE_OBJ = build/trace_functions.o
+
+REED_SOLOMON_OBJS := $(BUILD_DIR)/alpha_to.o $(BUILD_DIR)/index_of.o $(BUILD_DIR)/genpoly.o
 
 # don't count on having the tools in the PATH...
 CC := $(TOOLCHAIN_BIN)/$(TOOLCHAIN_PREFIX)-gcc
@@ -110,8 +112,6 @@ utils:
 	@test -d $(BUILD_DIR) || mkdir -p $(BUILD_DIR)
 	@$(GCC) $(CRC_SRCS) -I$(REED_SOLOMON)/include -o $(BUILD_DIR)/crcGenerator
 
-REED_SOLOMON_OBJS: $(BUILD_DIR)/alpha_to.o $(BUILD_DIR)/index_of.o $(BUILD_DIR)/genpoly.o
-
 $(BUILD_DIR)/alpha_to.o: $(REED_SOLOMON)/src/alpha_to.c $(REED_SOLOMON)/include/*
 	@echo [CC] $(notdir $<)
 	@$(CC) $(CFLAGS) $< -c -o $@
@@ -133,28 +133,28 @@ UNCHECKED_OBJS: $(OBJ)
 	@$(CC) $(CFLAGS) hardware/stm32f4xx_it.c -c -o build/stm32f4xx_it.o
 	@$(CC) $(CFLAGS) $(TRACE_FILES) -c -o $(TRACE_OBJ)
 
-INITIAL_COMPILATION: UNCHECKED_OBJS REED_SOLOMON_OBJS
+INITIAL_COMPILATION: UNCHECKED_OBJS $(REED_SOLOMON_OBJS)
 	@echo "[AS] $(ASRC)"
 	@$(AS) -o $(ASRC:%.s=$(BUILD_DIR)/%.o) $(STARTUP)/$(ASRC)
 	@echo [LD] $(TARGET).elf
 	@test -d $(BIN_DIR) || mkdir -p $(BIN_DIR)
-	@$(CC) -o $(BIN_DIR)/initial$(TARGET).elf $(INITIAL_LINKERSCRIPT) $(LDFLAGS) $(OBJ) $REED_SOLOMON_OBJS) $(TRACE_OBJ) $(ASRC:%.s=$(BUILD_DIR)/%.o) $(LDLIBS)
+	@$(CC) -o $(BIN_DIR)/initial$(TARGET).elf $(INITIAL_LINKERSCRIPT) $(LDFLAGS) $(OBJ) $(REED_SOLOMON_OBJS) $(TRACE_OBJ) $(ASRC:%.s=$(BUILD_DIR)/%.o) $(LDLIBS)
 
 
 INITIAL_PROFILER: INITIAL_COMPILATION
 	@echo "Starting Initial Profiler"
 	@test -d $(SEU_GEN_DIR) || mkdir -p $(SEU_GEN_DIR)
 	@$(READELF) --wide -s binary/initialFreeRTOS.elf| grep " FUNC    " | awk '{print $$3 " " $$8 }' | sort -k 2 | uniq -u  > seu/gen/fullMap.data
-	@awk '/\*{6}/{x++}{print >"seu/gen/template_half_" x ".ld" }' x=0 seu/initial_seu_link.ld #Split Linker script in half 
+	@awk '/\*-{6}\*/{x++}{print >"seu/gen/template_half_" x ".ld" }' x=0 seu/initial_seu_link.ld #Split Linker script in half
 	@$(PYTHON) $(SEU_DIR)/initial_profiler.py
 	@echo "initial Profiler Completed"
 
 SECONDARY_COMPILATION: INITIAL_PROFILER
 	@echo "Starting Secondary Complilation"
-	@$(CC) -Wl,-Map,$(TARGET).map -o $(BIN_DIR)/final$(TARGET).elf $(SECONDARY_LINKERSCRIPT) $(LDFLAGS) $(OBJ) $(TRACE_OBJ) $(HEADER_OBJ) $(ASRC:%.s=$(BUILD_DIR)/%.o) $(LDLIBS)
+	@$(CC) -Wl,-Map,$(TARGET).map -o $(BIN_DIR)/final$(TARGET).elf $(SECONDARY_LINKERSCRIPT) $(LDFLAGS) $(OBJ) $(REED_SOLOMON_OBJS) $(TRACE_OBJ) $(HEADER_OBJ) $(ASRC:%.s=$(BUILD_DIR)/%.o) $(LDLIBS)
 	@echo "Secondary Complilation Completed"
 
-SECONDARY_PROFILER: SECONDARY_COMPILATION 
+SECONDARY_PROFILER: SECONDARY_COMPILATION
 	@echo "generating hexDumps"
 	@x=1; while [[ $$x -le $(NUM_TEXT_SECTIONS)]] ; do \
 		$(READELF) -x .text$$x binary/final$(TARGET).elf | awk '{print $$2 " " $$3 " " $$4 " " $$5}' | tail -n+3 > $(SEU_GEN_DIR)/text_hex_dump_$$x.hex; \

@@ -20,31 +20,26 @@ MEMORY
 {
     sram (W!RX) : ORIGIN = 0x20000000, LENGTH = 192K
     CCMRAM (WRX) : ORIGIN = 0x60000000, LENGTH = 0K
-    WorkArea (WRX) : ORIGIN = 0x08000000, LENGTH = 16K
-    flash1 (WRX) : ORIGIN = 0x08004000, LENGTH = 16K
-    flash2 (WRX) : ORIGIN = 0x08008000, LENGTH = 16K
-    flash3 (WRX) : ORIGIN = 0x0800C000, LENGTH = 16K
-    flash4 (WRX) : ORIGIN = 0x08010000, LENGTH = 64K
-    flash5 (WRX) : ORIGIN = 0x08020000, LENGTH = 128K
-    flash6 (WRX) : ORIGIN = 0x08030000, LENGTH = 128K
-    flash7 (WRX) : ORIGIN = 0x08040000, LENGTH = 128K
-    flash8 (WRX) : ORIGIN = 0x08050000, LENGTH = 128K
-    flash9 (WRX) : ORIGIN = 0x08060000, LENGTH = 128K
-    flash10 (WRX) : ORIGIN = 0x08070000, LENGTH = 128K
-    OddsAndEnds (WRX) : ORIGIN = 0x08080000, LENGTH = 128K
+    flash (WRX) : ORIGIN = 0x08000000, LENGTH = (16K * 4) + 64K + (128K * 7)
 }
 
 SECTIONS
 {
-    /******/
     .text :
     {
-        . = ALIGN(4);
+		FILL(0)
         _text = .;
         PROVIDE(stext = .);
+		work_area = .;
+ 		. = (work_area + 16K);
+		block_count = .;
+		LONG((block_end - block_base) / 13312);
+		block_base = .;
+/****** Block 0 ******/
+    /*------*/
+        . = ALIGN(4);
+		block_end = .;
         KEEP(*(.isr_vector))
-        /*(.text)
-        *(.text*)*/
         *(.rodata .rodata.*)
         *(.gnu.linkonce.t.*)
         *(.glue_7)
@@ -58,8 +53,7 @@ SECTIONS
         PROVIDE(etext = .);
  	  	   _fini = . ;
 		   *(.fini)
-
-    } > flash10
+    } >flash
 
     .data :
     {
@@ -84,8 +78,6 @@ SECTIONS
 	} >sram
 	__exidx_end = .;
 
-    PROVIDE( flash_used_size = SIZEOF(.text) + SIZEOF(.data) + SIZEOF(.ARM.extab) + SIZEOF(.ARM.exidx) );
-
     .bss : {
 		. = ALIGN(4);
         /* This is used by the startup in order to initialize the .bss secion */
@@ -94,12 +86,16 @@ SECTIONS
         *(.bss .bss.*)
         *(.gnu.linkonce.b.*)
         *(COMMON)
-        . = ALIGN(4);
+		. = ALIGN(4);
+		crc_expire_times = .;
+		. = crc_expire_times + (block_end - block_base) / 13312 * 4;
         _ebss = .;
         __bss_end__ = _ebss;
     } >sram
 
     end = .;
+
+	PROVIDE( flash_used_size = SIZEOF(.text) + SIZEOF(.data) + SIZEOF(.ARM.extab) + SIZEOF(.ARM.exidx) );
     PROVIDE( _estack = 0x20020000 );
 }
 

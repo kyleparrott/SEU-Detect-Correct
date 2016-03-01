@@ -26,63 +26,28 @@ generatedLinkerScript = os.path.join('seu', 'gen', 'secondary_seu_link.ld')
 elfInput = os.path.join('seu', 'gen', 'readElf.data')
 functionMap = os.path.join('seu', 'gen', 'fullMap.data')
 
+functionEntryFormat =    '        *(.text.%s)\n'
+functionPadFormat =      '        . += %s;\n'
+blockFinishAndStartNew = '        . += {0};\n/****** Block {1} ******/\n'
 
-
-sectionFormat = '''
-    .text%s :
-    {
-        . = ALIGN(4);
-        *(.block%shdr);
-        *(.block%sfunc);
-%s
-    } >flash%s
-'''
-
-functionEntryFormat = '        *(.text.%s)\n'
-
-SIXTEEN_K = 12 * 1024
-SIXTY_FOUR_K = 60 * 1024
-ONE_TWENTY_EIGHT_K = 124 * 1024
-
-HEADERSIZE = 72 # bytes sizeof(block_header_t)
-WORDSIZE = 4 # bytes sizeof(int)
-
-class LSSection:
-    def __init__(self, name, number, length):
-        self.name = name
-        self.number = number
-        self.length = length
+ALIGNTO = 4;
+BLOCKSIZE = 13312; # bytes. Exactly equals 6656 words or 3328 dwords.
+PAYLOADSIZE = 13286;
+BLOCKTRAILER = BLOCKSIZE - PAYLOADSIZE;
+PROFILE0_BLOCK = 0;
+PROFILE1_BLOCK = 3;
+PROFILE2_BLOCK = 4;
 
 class FunctionDataObj:
-    def __init__(self, name, length):
+    def __init__(self, name, length, align):
         self.name = name
         self.length = int(length)
+        self.align = int(align)
+        self.bytes = int(length) + int(align)
 
 functionDataArray = []
 
 regex = re.compile('[^a-zA-Z0-9_]')
-
-linkScriptSectionArray = []
-
-linkScriptSectionArray.append( LSSection('.text0', 0, SIXTEEN_K))
-linkScriptSectionArray.append( LSSection('.text1', 1, SIXTEEN_K))
-linkScriptSectionArray.append( LSSection('.text2', 2, SIXTEEN_K))
-linkScriptSectionArray.append( LSSection('.text3', 3, SIXTEEN_K))
-linkScriptSectionArray.append( LSSection('.text4', 4, SIXTY_FOUR_K))
-linkScriptSectionArray.append( LSSection('.text5', 5, SIXTY_FOUR_K))
-linkScriptSectionArray.append( LSSection('.text6', 6, SIXTY_FOUR_K))
-linkScriptSectionArray.append( LSSection('.text7', 7, SIXTY_FOUR_K))
-linkScriptSectionArray.append( LSSection('.text8', 8, SIXTY_FOUR_K))
-linkScriptSectionArray.append( LSSection('.text9', 9, SIXTY_FOUR_K))
-linkScriptSectionArray.append( LSSection('.text10', 10, SIXTY_FOUR_K))
-linkScriptSectionArray.append( LSSection('.text11', 11, SIXTY_FOUR_K))
-linkScriptSectionArray.append( LSSection('.text12', 12, SIXTY_FOUR_K))
-linkScriptSectionArray.append( LSSection('.text13', 13, SIXTY_FOUR_K))
-linkScriptSectionArray.append( LSSection('.text14', 14, SIXTY_FOUR_K))
-# linkScriptSectionArray.append( LSSection('.text15', 15, SIXTY_FOUR_K))
-# linkScriptSectionArray.append( LSSection('.text16', 16, SIXTY_FOUR_K))
-# linkScriptSectionArray.append( LSSection('.text17', 17, ONE_TWENTY_EIGHT_K)) # Where everything else is being dumped at the moment
-# linkScriptSectionArray.append( LSSection('.text18', 18, SIXTY_FOUR_K))
 
 lineRegex = re.compile('08\S{6}\s')
 
@@ -90,7 +55,10 @@ lineRegex = re.compile('08\S{6}\s')
 with open(functionMap, 'r') as functionFile:
     for line in functionFile:
         functionData = line.split()
-        functionDataArray.append(FunctionDataObj(functionData[1], functionData[0]))
+        padding = int(functionData[0]) % ALIGNTO
+        if (padding > 0):
+            padding = ALIGNTO - padding;
+        functionDataArray.append(FunctionDataObj(functionData[1], functionData[0], padding))
 
 headData = ''
 with open (headLinkScriptTemplate, 'r') as headTemplateFile:
@@ -102,36 +70,77 @@ with open (tailLinkScriptTemplate, 'r') as tailTemplateFile:
     for line in tailTemplateFile:
         tailData += line
 
+def IndexOf(value, arr):
+    for index, item in enumerate(arr):
+        if item.name == value:
+            return index, item
+    return -1
+
+def getBiggestFunction(maxSize, arr):
+    itemLen = -1
+    itemIndex = -1
+    for index, item in enumerate(arr):
+        if ((item.bytes > itemLen) and (item.bytes <= maxSize)):
+            itemIndex = index
+            itemLen = item.bytes
+    return itemIndex
+
+to_section = [1, 1, 2, 3, 4]
+
 # Write linkerscript to file
 with open(generatedLinkerScript, 'w') as outputFile:
-    x = 0
     for line in headData: #write first half of linker script
         outputFile.write('%s' % line)
 
-    x = 0 # Current linker script section
-    sec_num = linkScriptSectionArray[x].number
-    functionString = '' # contents of the current LS section
-    runningSize = HEADERSIZE #Running total size of functions placed in current section
-    for entry in functionDataArray:        #write individual functions to linker script
-        # Pad to .ALIGN(4) and add function length
-        bytesOverAlignment = runningSize % WORDSIZE
-        if (bytesOverAlignment > 0):
-            functionSize = WORDSIZE - bytesOverAlignment + entry.length
-        else:
-            functionSize = entry.length
-        if (runningSize + functionSize) >= linkScriptSectionArray[x].length:
-            outputFile.write(sectionFormat % (sec_num, sec_num, sec_num, functionString, sec_num))
-            x += 1
-            sec_num = linkScriptSectionArray[x].number
-            functionString = ''
-            runningSize = HEADERSIZE
-            functionSize = entry.length # Remove any padding, header is always aligned
-        functionString += functionEntryFormat % entry.name
-        runningSize += functionSize
-    outputFile.write(sectionFormat % (sec_num, sec_num, sec_num, functionString, sec_num))
+    idx, s1 = IndexOf('section1_profile_func_enter', functionDataArray)
+    del functionDataArray[idx]
+    idx, s2 = IndexOf('section2_profile_func_enter', functionDataArray)
+    del functionDataArray[idx]
+    idx, s3 = IndexOf('section3_profile_func_enter', functionDataArray)
+    del functionDataArray[idx]
 
-    # for index in range(x + 1, len(linkScriptSectionArray)): #include the empty sections (if any) in the linkerscript
-            # outputFile.write(sectionFormat % (linkScriptSectionArray[index].number, linkScriptSectionArray[index].number, '', linkScriptSectionArray[index].number))
+    blknum = 0
+    outputFile.write(functionEntryFormat % s1.name)
+    if s1.align > 0:
+        outputFile.write(functionPadFormat % s1.align)
+    bytesAvailable = PAYLOADSIZE - s1.bytes
+
+    while len(functionDataArray) > 0:
+        idx = getBiggestFunction(bytesAvailable, functionDataArray)
+        if (idx < 0):			 # could not find a function that will fit
+            if (bytesAvailable == PAYLOADSIZE): # remaining functions are bigger than PAYLOADSIZE
+                for elem in functionDataArray:
+                    print('FUNCTION TOO BIG: {0} {1} {2}\n' .format(elem.length, elem.bytes, elem.name))
+                raise Exception
+
+            blknum += 1
+            blktrailer = bytesAvailable + BLOCKTRAILER
+            outputFile.write(blockFinishAndStartNew .format(blktrailer, blknum))
+            bytesAvailable = PAYLOADSIZE
+
+            if (blknum == 3):
+                outputFile.write(functionEntryFormat % s2.name)
+                if s2.align > 0:
+                    outputFile.write(functionPadFormat % s2.align)
+                bytesAvailable -= s2.bytes
+            elif (blknum == 4):
+                outputFile.write(functionEntryFormat % s3.name)
+                if s3.align > 0:
+                    outputFile.write(functionPadFormat % s3.align)
+                bytesAvailable -= s3.bytes
+        else:
+            fd = functionDataArray[idx]
+            outputFile.write(functionEntryFormat % fd.name)
+            if (fd.align > 0):
+                outputFile.write(functionPadFormat % fd.align)
+            bytesAvailable -= fd.bytes
+            del functionDataArray[idx]
+
+
+
+
+
+
 
     for line in tailData:    #write second half of linkerscript
         outputFile.write('%s' % line)
