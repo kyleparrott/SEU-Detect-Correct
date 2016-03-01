@@ -18,33 +18,69 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdlib.h>
+#include <time.h>
 #include "crcmodel.h"
-#include <reed_solomon.h>
+#include "crc_generator.h"
+#include "reed_solomon.h"
 
-static uint32_t CRC_CalcBlockCRC(uint32_t *buffer, uint32_t words);
-
+void encode_and_crc (char* input);
+static uint32_t CRC_CalcBlockCRC (uint32_t *buffer, uint32_t words);
 
 int main(int argc, char** argv) {
-    unsigned long argLen = strlen(argv[1]);
-    unsigned long remainder = argLen % 8;
-    unsigned long numWords = argLen / 8;
-    if (remainder != 0){
-        numWords++;
-    }
-    uint32_t inputArray[numWords];
-    int index, start = 0, length = 8;
+    if (argc == 1) {  //If no input is given, it will create some sample data, encode and crc it to show it working.
+                      //This is just a temporary measure. I will remove this whole block once we know it's working properly.
+        printf("Running with duplicate random data set:\n");
+        srandom(time(NULL));
+        word_t block[SYMBOL_TABLE_WORDS];
+        int i;
+        for (i = 0; i < SYMBOL_TABLE_WORDS; i++) {
+            block[i] = random();
+        }
 
-    char intString[9];
-    intString[8] = '\0';
-    for (index = 0; index < numWords; index++) {
-        memcpy(&intString, argv[1] + start, length);
-        sscanf(intString, "%x", inputArray+index);
-        memset(intString, 0, 8);
-        start += 8;
+        block_t testBlocks[2];
+        memcpy(&(testBlocks[0]), block, sizeof(block));
+        memcpy(&(testBlocks[1]), block, sizeof(block));
+        testBlocks[0].crc = 0;
+        testBlocks[1].crc = 0;
+
+        struct blockWrapper* testBlockWrapper = malloc(sizeof(struct blockWrapper));
+        testBlockWrapper->block_count = 2;
+        testBlockWrapper->data = malloc(sizeof(block_t) * 2);
+
+        memcpy((testBlockWrapper->data), testBlocks, sizeof(testBlocks));
+        encode_and_crc((char*) testBlockWrapper);
+    } else {
+        encode_and_crc(argv[1]);
     }
-    uint32_t res = CRC_CalcBlockCRC(inputArray, numWords);
-    printf("%02u\n", res);
     return 0;
+}
+
+void encode_and_crc (char* input) {
+    struct blockWrapper* blockWrapperPtr = (struct blockWrapper*) input;
+    uint32_t inputData [SYMBOL_TABLE_WORDS/2]; //SYMBOL_TABLE_WORDS in 16 bit words.
+    uint32_t dataSize = sizeof(block_t) - sizeof(uint32_t);
+    uint32_t numWords = dataSize / sizeof(uint32_t);
+    uint32_t crc;
+    
+    uint16_t parityData[PARITY_SYMBOL_COUNT]; //used to print hex of parity symbols
+
+    int idx, x;
+    int parityStartIdx = SYMBOL_TABLE_WORDS - PARITY_SYMBOL_COUNT - 1;
+
+    for (idx = 0; idx < blockWrapperPtr->block_count; idx++) {
+        memcpy(inputData, &(blockWrapperPtr->data[idx]), dataSize);
+        encode_rs((word_t*) inputData);
+        crc = CRC_CalcBlockCRC((uint32_t*)inputData, numWords);
+        blockWrapperPtr->data[idx].crc = crc;
+
+        memcpy(parityData, &(blockWrapperPtr->data[idx].reed_solomon_data[parityStartIdx]), PARITY_SYMBOL_COUNT);
+        printf("%u,", crc);
+        for (x = 0; x < PARITY_SYMBOL_COUNT; x++) {
+            printf("%x", parityData[x]);
+        }
+        printf("\n");
+    }
 }
 
 static uint32_t CRC_CalcBlockCRC(uint32_t *buffer, uint32_t words) {

@@ -49,9 +49,9 @@ for x in range(1, NUMBER_TEXT_SECTIONS):
             content_str += line.strip()
     start_idx = 2 * NUM_IGNORE_BYTES # contents are hex encoded, 2 hex chars per byte
     reduced_contents = content_str[start_idx:] #drop the block header from the hex dump
-    output = subprocess.check_output([crc_exe_path, reduced_contents])
-    crc = output
-    print ('crc: ', crc)
+    # output = subprocess.check_output([crc_exe_path])
+    # crc = output.decode('utf-8')
+    # print ('crc: ', crc)
 
 
 
