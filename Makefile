@@ -100,7 +100,7 @@ AR := $(TOOLCHAIN_BIN)/$(TOOLCHAIN_PREFIX)-ar
 GDB := $(TOOLCHAIN_BIN)/$(TOOLCHAIN_PREFIX)-gdb
 READELF := $(TOOLCHAIN_BIN)/$(TOOLCHAIN_PREFIX)-readelf
 
-GCC=gcc #Standard Desktop GCC
+GCC=gcc-4.9 #Standard Desktop GCC
 
 PYTHON = python3
 
@@ -113,7 +113,7 @@ all: utils SECONDARY_PROFILER
 utils:
 	@echo [CC] crcGenerator.c
 	@test -d $(BUILD_DIR) || mkdir -p $(BUILD_DIR)
-	$(GCC) $(CRC_SRCS) $(REED_SOLOMON_SRC) $(INCLUDE) -I$(REED_SOLOMON)/include $(DBG) -o $(BUILD_DIR)/crcGenerator
+	$(GCC) $(CRC_SRCS) $(REED_SOLOMON_SRC) $(INCLUDE) -I$(REED_SOLOMON)/include -g -o $(BUILD_DIR)/crcGenerator
 
 REED_SOLOMON_OBJS: $(REED_SOLOMON_OBJ)
 
@@ -159,13 +159,10 @@ SECONDARY_COMPILATION: INITIAL_PROFILER
 	@echo "Secondary Complilation Completed"
 
 SECONDARY_PROFILER: SECONDARY_COMPILATION
-	@echo "generating hexDumps"
-	@x=1; while [[ $$x -le $(NUM_TEXT_SECTIONS)]] ; do \
-		$(READELF) -x .text$$x binary/final$(TARGET).elf | awk '{print $$2 " " $$3 " " $$4 " " $$5}' | tail -n+3 > $(SEU_GEN_DIR)/text_hex_dump_$$x.hex; \
-		((x = x + 1)); \
-	done
-	@echo "running Secondary/Final Profiler"
-	$(PYTHON) $(SEU_DIR)/secondary_profiler.py
+	@echo "Starting Final Profiler"
+	$(eval textOffset:=$(shell $(READELF) -S $(BIN_DIR)/final$(TARGET).elf | grep ".text  " | awk '{print $$6}'))
+	@echo "Sarting CRC_Generator/elf modifier"
+	./build/crcGenerator $(BIN_DIR)/final$(TARGET).elf $(textOffset)
 
 .PHONY: clean
 
