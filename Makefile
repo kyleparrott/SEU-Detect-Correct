@@ -100,7 +100,7 @@ AR := $(TOOLCHAIN_BIN)/$(TOOLCHAIN_PREFIX)-ar
 GDB := $(TOOLCHAIN_BIN)/$(TOOLCHAIN_PREFIX)-gdb
 READELF := $(TOOLCHAIN_BIN)/$(TOOLCHAIN_PREFIX)-readelf
 
-GCC=gcc-4.9 #Standard Desktop GCC
+GCC=gcc #Standard Desktop GCC
 
 PYTHON = python3
 
